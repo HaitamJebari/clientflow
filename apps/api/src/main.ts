@@ -11,11 +11,15 @@ async function bootstrap() {
     credentials: true,
   });
 
+  app.enableShutdownHooks();
+
   const port = process.env.PORT ?? 4000;
 
   await app.listen(port);
 
-  console.log(`ClientFlow API running on http://localhost:${port}/api/v1`);
+  console.log(
+    `ClientFlow API running on http://localhost:${port}/api/v1`,
+  );
 }
 
 bootstrap();
