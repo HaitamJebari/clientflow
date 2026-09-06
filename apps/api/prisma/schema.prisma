@@ -27,6 +27,7 @@ model User {
   emailVerified Boolean @default(false)
 
   memberships OrganizationMember[]
+  sessions    Session[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -43,7 +44,8 @@ model Organization {
   website  String?
   industry String?
 
-  members OrganizationMember[]
+  members  OrganizationMember[]
+  sessions Session[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -68,4 +70,29 @@ model OrganizationMember {
   @@index([organizationId])
   @@index([userId])
   @@map("organization_members")
+}
+
+model Session {
+  id String @id @default(uuid())
+
+  userId         String
+  organizationId String
+
+  refreshTokenHash String
+
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  userAgent String?
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([expiresAt])
+  @@map("sessions")
 }
