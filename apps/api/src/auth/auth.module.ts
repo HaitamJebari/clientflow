@@ -8,6 +8,11 @@ import { AuthService } from './auth.service';
 import { AccessTokenStrategy } from './strategies/access-token.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
+import { SessionGuard } from './guards/session.guard';
+
+import { OrganizationMembershipGuard } from './guards/organization-membership.guard';
+import { RolesGuard } from './guards/roles.guard';
+
 @Module({
   imports: [
     PassportModule.register({
@@ -24,11 +29,17 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
     AuthService,
     AccessTokenStrategy,
     JwtAuthGuard,
+    SessionGuard,
+    OrganizationMembershipGuard,
+    RolesGuard,
   ],
 
   exports: [
     AuthService,
     JwtAuthGuard,
+    SessionGuard,
+    OrganizationMembershipGuard,
+    RolesGuard,
   ],
 })
 export class AuthModule {}
