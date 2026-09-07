@@ -1,5 +1,4 @@
 import {
-  ArrowUpRight,
   Check,
   Clock3,
   Eye,
@@ -15,29 +14,88 @@ interface AuthVisualProps {
 export function AuthVisual({
   mode,
 }: AuthVisualProps) {
-  const isRegister = mode === 'register';
+  const isRegister =
+    mode === 'register';
 
   return (
     <section
       className="
         relative
         hidden
+        h-screen
+        min-h-0
         overflow-hidden
         bg-[#080d1a]
         text-white
 
         lg:flex
-        lg:h-screen
-        lg:min-h-0
         lg:flex-col
       "
     >
-      {/* Ambient background */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-[-120px] top-[90px] h-[420px] w-[420px] rounded-full bg-[#5b5bf7]/18 blur-[120px]" />
-        <div className="absolute right-[-140px] bottom-[40px] h-[420px] w-[420px] rounded-full bg-cyan-400/10 blur-[140px]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.05),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(91,91,247,0.08),transparent_24%)]" />
-        <div className="absolute inset-0 opacity-[0.06] [background-image:linear-gradient(rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.12)_1px,transparent_1px)] [background-size:34px_34px]" />
+      {/* ===============================
+          BACKGROUND
+      ================================ */}
+
+      <div
+        className="
+          pointer-events-none
+          absolute
+          inset-0
+          overflow-hidden
+        "
+      >
+        <div
+          className="
+            absolute
+            -left-[180px]
+            top-[100px]
+            h-[500px]
+            w-[500px]
+            rounded-full
+            bg-[#5b5bf7]/15
+            blur-[140px]
+          "
+        />
+
+        <div
+          className="
+            absolute
+            -right-[170px]
+            bottom-[-120px]
+            h-[480px]
+            w-[480px]
+            rounded-full
+            bg-cyan-400/10
+            blur-[150px]
+          "
+        />
+
+        <div
+          className="
+            absolute
+            inset-0
+            opacity-[0.035]
+
+            [background-image:
+              linear-gradient(rgba(255,255,255,.15)_1px,transparent_1px),
+              linear-gradient(90deg,rgba(255,255,255,.15)_1px,transparent_1px)
+            ]
+
+            [background-size:38px_38px]
+          "
+        />
+
+        <div
+          className="
+            absolute
+            inset-x-0
+            bottom-0
+            h-[220px]
+            bg-gradient-to-t
+            from-[#080d1a]
+            to-transparent
+          "
+        />
       </div>
 
       <div
@@ -48,47 +106,118 @@ export function AuthVisual({
           h-full
           min-h-0
           flex-col
-          px-12
+          px-10
           py-8
-          xl:px-16
+
+          xl:px-14
         "
       >
-        {/* Brand */}
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#5b5bf7] text-sm font-semibold shadow-lg shadow-[#5b5bf7]/30">
+        {/* ===============================
+            BRAND
+        ================================ */}
+
+        <div
+          className="
+            flex
+            shrink-0
+            items-center
+            gap-3
+          "
+        >
+          <div
+            className="
+              flex
+              h-10
+              w-10
+              items-center
+              justify-center
+              rounded-xl
+              bg-[#5b5bf7]
+              text-[15px]
+              font-semibold
+
+              shadow-[0_10px_30px_rgba(91,91,247,.32)]
+            "
+          >
             ↗
           </div>
 
           <div>
-            <p className="text-[18px] font-semibold tracking-[-0.5px]">
+            <div
+              className="
+                text-[18px]
+                font-semibold
+                tracking-[-0.6px]
+              "
+            >
               ClientFlow
-            </p>
-            <p className="text-[11px] text-slate-400">
-              Turn opportunities into revenue
-            </p>
+            </div>
+
+            <div
+              className="
+                mt-[1px]
+                text-[10px]
+                text-slate-400
+              "
+            >
+              Turn opportunities
+              into revenue
+            </div>
           </div>
         </div>
 
-        {/* Headline */}
-        <div className="mt-16 max-w-[540px]">
-          <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-300">
+        {/* ===============================
+            PAGE COPY
+        ================================ */}
+
+        <div
+          className="
+            mt-10
+            shrink-0
+
+            xl:mt-12
+          "
+        >
+          <div
+            className="
+              mb-3
+              flex
+              items-center
+              gap-2
+
+              text-[10px]
+              font-semibold
+              uppercase
+              tracking-[0.18em]
+              text-indigo-300
+            "
+          >
+            <Sparkles size={12} />
+
             {isRegister
               ? 'AI-powered client acquisition'
-              : 'Welcome back'}
-          </p>
+              : 'Your revenue workspace'}
+          </div>
 
-          <h1 className="max-w-[520px] text-[50px] font-semibold leading-[1.03] tracking-[-2.2px] xl:text-[56px]">
+          <h1
+            className="
+              max-w-[520px]
+
+              text-[43px]
+              font-semibold
+              leading-[1.03]
+              tracking-[-2px]
+
+              xl:text-[48px]
+            "
+          >
             {isRegister ? (
               <>
-                Build a sales
+                Turn more
                 <br />
-                system your
+                opportunities
                 <br />
-                future self
-                <br />
-                will thank you
-                <br />
-                for.
+                into clients.
               </>
             ) : (
               <>
@@ -99,261 +228,782 @@ export function AuthVisual({
             )}
           </h1>
 
-          <p className="mt-5 max-w-[430px] text-[15px] leading-7 text-slate-400">
+          <p
+            className="
+              mt-4
+              max-w-[430px]
+
+              text-[13px]
+              leading-6
+              text-slate-400
+
+              xl:text-[14px]
+            "
+          >
             {isRegister
-              ? 'Capture leads, qualify opportunities, track proposal engagement and know exactly what action can move revenue forward.'
-              : 'Sign in to continue managing opportunities, proposals and next-best actions from one focused revenue workspace.'}
+              ? 'Capture, qualify and follow through with every opportunity from one focused workspace.'
+              : 'Pick up where you left off and keep your strongest opportunities moving forward.'}
           </p>
         </div>
 
-        {/* 3D Scene */}
+        {/* ===============================
+            SHARED 3D PRODUCT SCENE
+
+            EXACT SAME CARDS FOR:
+            LOGIN + REGISTER
+        ================================ */}
+
         <div
           className="
-            cf-auth-perspective
+            cf-register-scene
+
             relative
-            mt-7
+            mt-6
             min-h-0
             flex-1
+
+            xl:mt-7
           "
         >
-          {/* Main board */}
-          <div className="cf-auth-board cf-page-enter relative mt-1 w-[560px] max-w-full rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,28,48,0.96),rgba(12,18,32,0.96))] p-5 shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
-            <div className="mb-5 flex items-start justify-between gap-5">
+          {/* Ambient glow */}
+
+          <div
+            className="
+              pointer-events-none
+              absolute
+              left-[10%]
+              top-[35%]
+
+              h-[170px]
+              w-[75%]
+
+              rounded-[50%]
+
+              bg-[#5b5bf7]/12
+              blur-[65px]
+            "
+          />
+
+          {/* =============================
+              MAIN PRODUCT BOARD
+          ============================== */}
+
+          <div
+            className="
+              cf-register-board
+
+              absolute
+              left-[5%]
+              top-[10px]
+
+              w-[83%]
+              max-w-[530px]
+
+              rounded-[20px]
+
+              border
+              border-white/10
+
+              bg-[linear-gradient(145deg,#172138_0%,#111a2c_50%,#0d1525_100%)]
+
+              p-5
+
+              shadow-[0_40px_100px_rgba(0,0,0,.48)]
+            "
+          >
+            <div
+              className="
+                flex
+                items-start
+                justify-between
+                gap-4
+              "
+            >
               <div>
-                <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">
+                <p
+                  className="
+                    text-[9px]
+                    font-semibold
+                    uppercase
+                    tracking-[0.18em]
+                    text-slate-500
+                  "
+                >
                   Open pipeline
                 </p>
-                <div className="mt-2 flex items-end gap-3">
-                  <p className="text-[38px] font-semibold tracking-[-1.8px]">
+
+                <div
+                  className="
+                    mt-1.5
+                    flex
+                    items-end
+                    gap-2
+                  "
+                >
+                  <strong
+                    className="
+                      text-[30px]
+                      font-semibold
+                      tracking-[-1.3px]
+                    "
+                  >
                     €24,500
-                  </p>
-                  <div className="mb-1 flex items-center gap-1 rounded-md bg-emerald-400/10 px-2 py-1 text-[11px] font-medium text-emerald-300">
-                    <TrendingUp size={13} />
+                  </strong>
+
+                  <span
+                    className="
+                      mb-1
+                      flex
+                      items-center
+                      gap-1
+
+                      rounded-md
+
+                      bg-emerald-400/10
+
+                      px-2
+                      py-1
+
+                      text-[9px]
+                      font-medium
+                      text-emerald-300
+                    "
+                  >
+                    <TrendingUp
+                      size={11}
+                    />
+
                     +12%
-                  </div>
+                  </span>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-white/8 bg-white/5 px-3 py-2 text-right">
-                <p className="text-[10px] uppercase tracking-[0.16em] text-slate-400">
+              <div
+                className="
+                  rounded-xl
+                  border
+                  border-white/[0.08]
+                  bg-white/[0.04]
+
+                  px-3
+                  py-2
+                "
+              >
+                <p
+                  className="
+                    text-[8px]
+                    uppercase
+                    tracking-[0.15em]
+                    text-slate-500
+                  "
+                >
                   Active leads
                 </p>
-                <p className="mt-1 text-[20px] font-semibold">18</p>
+
+                <p
+                  className="
+                    mt-1
+                    text-right
+                    text-[20px]
+                    font-semibold
+                  "
+                >
+                  18
+                </p>
               </div>
             </div>
 
-            {/* Chart */}
-            <div className="rounded-[18px] border border-white/8 bg-white/[0.035] p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <p className="text-[12px] font-medium text-white">
-                    Revenue momentum
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-400">
-                    Opportunities that need attention today
-                  </p>
-                </div>
+            {/* Compact pipeline graphic */}
 
-                <div className="rounded-md bg-indigo-400/10 px-2.5 py-1 text-[10px] font-medium text-indigo-200">
-                  This week
-                </div>
-              </div>
+            <div
+              className="
+                relative
+                mt-5
+                h-[85px]
+                overflow-hidden
 
-              <div className="relative h-[140px]">
-                <svg
-                  viewBox="0 0 520 140"
-                  className="h-full w-full"
-                  aria-hidden
-                >
-                  <defs>
-                    <linearGradient
-                      id="cf-auth-area"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <stop
-                        offset="0%"
-                        stopColor="#7167ff"
-                        stopOpacity="0.48"
-                      />
-                      <stop
-                        offset="100%"
-                        stopColor="#7167ff"
-                        stopOpacity="0"
-                      />
-                    </linearGradient>
-                  </defs>
+                rounded-xl
 
-                  <path
-                    d="
-                      M10 116
-                      C45 108, 60 92, 95 90
-                      C130 88, 150 100, 185 84
-                      C225 66, 250 70, 290 58
-                      C325 48, 350 62, 392 40
-                      C430 20, 462 22, 510 10
-                      L510 136
-                      L10 136
-                      Z
-                    "
-                    fill="url(#cf-auth-area)"
-                  />
+                border
+                border-white/[0.07]
 
-                  <path
-                    d="
-                      M10 116
-                      C45 108, 60 92, 95 90
-                      C130 88, 150 100, 185 84
-                      C225 66, 250 70, 290 58
-                      C325 48, 350 62, 392 40
-                      C430 20, 462 22, 510 10
-                    "
-                    fill="none"
-                    stroke="#7c73ff"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                  />
+                bg-white/[0.025]
+              "
+            >
+              <svg
+                viewBox="0 0 500 90"
+                className="
+                  h-full
+                  w-full
+                "
+                aria-hidden="true"
+              >
+                <defs>
+                  <linearGradient
+                    id="cf-auth-shared-area"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop
+                      offset="0%"
+                      stopColor="#7167ff"
+                      stopOpacity="0.38"
+                    />
 
-                  <circle cx="392" cy="40" r="5" fill="#ffffff" />
-                  <circle cx="392" cy="40" r="10" fill="#7c73ff" fillOpacity="0.25" />
-                </svg>
-              </div>
+                    <stop
+                      offset="100%"
+                      stopColor="#7167ff"
+                      stopOpacity="0"
+                    />
+                  </linearGradient>
+                </defs>
+
+                <path
+                  d="
+                    M0 77
+                    C55 72 82 54 126 58
+                    C175 64 202 51 247 48
+                    C295 45 330 31 371 34
+                    C417 37 448 17 500 11
+                    L500 90
+                    L0 90
+                    Z
+                  "
+                  fill="url(#cf-auth-shared-area)"
+                />
+
+                <path
+                  d="
+                    M0 77
+                    C55 72 82 54 126 58
+                    C175 64 202 51 247 48
+                    C295 45 330 31 371 34
+                    C417 37 448 17 500 11
+                  "
+                  fill="none"
+                  stroke="#7167ff"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                />
+
+                <circle
+                  cx="371"
+                  cy="34"
+                  r="4"
+                  fill="#ffffff"
+                />
+
+                <circle
+                  cx="371"
+                  cy="34"
+                  r="9"
+                  fill="#7167ff"
+                  fillOpacity=".22"
+                />
+              </svg>
             </div>
 
-            {/* Bottom insights row */}
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              {[
-                ['High intent', '6 leads'],
-                ['Proposal stage', '4 active'],
-                ['Reply needed', '3 today'],
-              ].map(([label, value]) => (
-                <div
-                  key={label}
-                  className="rounded-xl border border-white/8 bg-white/[0.04] px-3 py-3"
-                >
-                  <p className="text-[10px] uppercase tracking-[0.14em] text-slate-400">
-                    {label}
-                  </p>
-                  <p className="mt-1.5 text-[15px] font-semibold text-white">
-                    {value}
-                  </p>
-                </div>
-              ))}
+            {/* Bottom metrics */}
+
+            <div
+              className="
+                mt-3
+                grid
+                grid-cols-3
+                gap-2
+              "
+            >
+              <MiniMetric
+                label="Qualified"
+                value="6"
+              />
+
+              <MiniMetric
+                label="Proposal"
+                value="4"
+              />
+
+              <MiniMetric
+                label="Reply needed"
+                value="3"
+              />
             </div>
           </div>
 
-          {/* Floating card 1 */}
-          <div className="cf-auth-card cf-auth-card-one absolute right-[-6px] top-[18px] w-[260px] rounded-[18px] border border-white/10 bg-[rgba(28,39,64,0.92)] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.35)] backdrop-blur-sm">
-            <div className="flex items-start justify-between gap-3">
+          {/* =============================
+              CARD 1
+              PROPOSAL ACTIVITY
+          ============================== */}
+
+          <div
+            className="
+              cf-register-float-two
+
+              absolute
+              bottom-[40px]
+              left-[1%]
+
+              w-[215px]
+
+              rounded-[15px]
+
+              border
+              border-white/10
+
+              bg-[#152136]/95
+
+              p-3.5
+
+              shadow-[0_20px_55px_rgba(0,0,0,.45)]
+
+              backdrop-blur-xl
+            "
+          >
+            <div
+              className="
+                flex
+                items-start
+                justify-between
+                gap-2
+              "
+            >
               <div>
-                <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">
-                  Next best action
-                </p>
-                <p className="mt-1 text-[15px] font-semibold text-white">
-                  Follow up with Acme
-                </p>
-              </div>
-
-              <div className="rounded-lg bg-amber-300/10 p-2 text-amber-300">
-                <Clock3 size={15} />
-              </div>
-            </div>
-
-            <div className="mt-4 space-y-2 text-[11px] text-slate-300">
-              <div className="flex items-center gap-2">
-                <Eye size={13} className="text-indigo-300" />
-                Proposal opened 3 times
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Sparkles size={13} className="text-indigo-300" />
-                No reply for 4 days
-              </div>
-            </div>
-
-            <button className="mt-4 flex items-center gap-2 text-[12px] font-medium text-white">
-              Review follow-up
-              <ArrowUpRight size={14} />
-            </button>
-          </div>
-
-          {/* Floating card 2 */}
-          <div className="cf-auth-card cf-auth-card-two absolute left-[28px] bottom-[70px] w-[230px] rounded-[18px] border border-white/10 bg-[rgba(19,28,47,0.92)] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.34)] backdrop-blur-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">
+                <p
+                  className="
+                    text-[8px]
+                    font-semibold
+                    uppercase
+                    tracking-[0.16em]
+                    text-slate-500
+                  "
+                >
                   Proposal activity
                 </p>
-                <p className="mt-1 text-[15px] font-semibold text-white">
+
+                <p
+                  className="
+                    mt-1
+                    text-[12px]
+                    font-semibold
+                  "
+                >
                   TechCorp
                 </p>
               </div>
 
-              <div className="rounded-lg bg-cyan-300/10 p-2 text-cyan-300">
-                <FileText size={15} />
+              <div
+                className="
+                  flex
+                  h-7
+                  w-7
+                  items-center
+                  justify-center
+
+                  rounded-lg
+
+                  bg-cyan-400/10
+                  text-cyan-300
+                "
+              >
+                <FileText
+                  size={13}
+                />
               </div>
             </div>
 
-            <div className="mt-4 rounded-xl border border-white/8 bg-white/[0.04] p-3">
-              <div className="flex items-center justify-between text-[11px] text-slate-300">
-                <span>Views</span>
-                <span className="font-medium text-white">4</span>
-              </div>
-              <div className="mt-2 flex items-center justify-between text-[11px] text-slate-300">
-                <span>Pricing interest</span>
-                <span className="font-medium text-white">High</span>
-              </div>
-              <div className="mt-2 flex items-center justify-between text-[11px] text-slate-300">
-                <span>Last open</span>
-                <span className="font-medium text-white">20 min ago</span>
-              </div>
+            <div
+              className="
+                mt-3
+                space-y-2
+              "
+            >
+              <ActivityRow
+                label="Views"
+                value="4"
+              />
+
+              <ActivityRow
+                label="Pricing interest"
+                value="High"
+              />
+
+              <ActivityRow
+                label="Last open"
+                value="20 min ago"
+              />
             </div>
           </div>
 
-          {/* Floating card 3 */}
-          <div className="cf-auth-card cf-auth-card-three absolute bottom-[-6px] right-[78px] w-[250px] rounded-[18px] border border-white/10 bg-[rgba(20,30,48,0.92)] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.34)] backdrop-blur-sm">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">
-              Why this matters
-            </p>
+          {/* =============================
+              CARD 2
+              NEXT BEST ACTION
+          ============================== */}
 
-            <ul className="mt-3 space-y-2.5 text-[12px] text-slate-200">
-              <li className="flex items-start gap-2">
-                <Check size={14} className="mt-0.5 text-emerald-300" />
-                High-value opportunity with recent engagement
-              </li>
-              <li className="flex items-start gap-2">
-                <Check size={14} className="mt-0.5 text-emerald-300" />
-                Clear next action instead of manual guesswork
-              </li>
-            </ul>
+          <div
+            className="
+              cf-register-float-one
+
+              absolute
+              right-[0]
+              top-[25px]
+
+              w-[220px]
+
+              rounded-[15px]
+
+              border
+              border-white/10
+
+              bg-[#1b2740]/95
+
+              p-3.5
+
+              shadow-[0_20px_55px_rgba(0,0,0,.45)]
+
+              backdrop-blur-xl
+            "
+          >
+            <div
+              className="
+                flex
+                items-start
+                justify-between
+                gap-3
+              "
+            >
+              <div>
+                <p
+                  className="
+                    text-[8px]
+                    font-semibold
+                    uppercase
+                    tracking-[0.16em]
+                    text-slate-500
+                  "
+                >
+                  Next best action
+                </p>
+
+                <p
+                  className="
+                    mt-1
+                    text-[12px]
+                    font-semibold
+                  "
+                >
+                  Follow up with Acme
+                </p>
+              </div>
+
+              <div
+                className="
+                  flex
+                  h-7
+                  w-7
+                  shrink-0
+                  items-center
+                  justify-center
+
+                  rounded-lg
+
+                  bg-amber-300/10
+                  text-amber-300
+                "
+              >
+                <Clock3
+                  size={13}
+                />
+              </div>
+            </div>
+
+            <div
+              className="
+                mt-3
+                flex
+                flex-wrap
+                gap-1.5
+              "
+            >
+              <Signal>
+                €8,500
+              </Signal>
+
+              <Signal>
+                Viewed 3×
+              </Signal>
+
+              <Signal>
+                4 days
+              </Signal>
+            </div>
+          </div>
+
+          {/* =============================
+              CARD 3
+              WHY THIS MATTERS
+          ============================== */}
+
+          <div
+            className="
+              cf-register-float-three
+
+              absolute
+              bottom-[10px]
+              right-[8%]
+
+              w-[235px]
+
+              rounded-[15px]
+
+              border
+              border-white/10
+
+              bg-[#111c2f]/95
+
+              p-3.5
+
+              shadow-[0_20px_55px_rgba(0,0,0,.42)]
+
+              backdrop-blur-xl
+            "
+          >
+            <div
+              className="
+                flex
+                items-center
+                gap-2
+
+                text-[8px]
+                font-semibold
+                uppercase
+                tracking-[0.16em]
+                text-indigo-300
+              "
+            >
+              <Sparkles
+                size={11}
+              />
+
+              Why this matters
+            </div>
+
+            <div
+              className="
+                mt-3
+                space-y-2
+              "
+            >
+              <Reason>
+                High-value opportunity
+                with recent engagement
+              </Reason>
+
+              <Reason>
+                Clear next action instead
+                of manual guesswork
+              </Reason>
+            </div>
           </div>
         </div>
 
-        {/* Bottom trust line */}
-        <div className="relative z-10 mt-10 flex flex-wrap gap-x-5 gap-y-2 text-[11px] text-slate-400">
-          {[
-            isRegister
-              ? 'Free to get started'
-              : 'Your workspace is protected',
-            isRegister
-              ? 'No credit card required'
-              : 'Pick up where you left off',
-            isRegister
-              ? 'Setup focused on real businesses'
-              : 'Built for freelancers and agencies',
-          ].map((item) => (
-            <span
-              key={item}
-              className="flex items-center gap-1.5"
-            >
-              <Check size={12} />
-              {item}
-            </span>
-          ))}
+        {/* ===============================
+            FOOTER
+        ================================ */}
+
+        <div
+          className="
+            relative
+            z-20
+            mt-3
+
+            flex
+            shrink-0
+            flex-wrap
+
+            gap-x-5
+            gap-y-1.5
+
+            text-[9px]
+            text-slate-500
+          "
+        >
+          {(isRegister
+            ? [
+                'Free to get started',
+                'No credit card required',
+                'Setup focused on real businesses',
+              ]
+            : [
+                'Your workspace is protected',
+                'Private by default',
+                'Pick up where you left off',
+              ]
+          ).map(
+            (item) => (
+              <span
+                key={item}
+                className="
+                  flex
+                  items-center
+                  gap-1.5
+                "
+              >
+                <Check
+                  size={10}
+                  className="
+                    text-slate-400
+                  "
+                />
+
+                {item}
+              </span>
+            ),
+          )}
         </div>
       </div>
     </section>
+  );
+}
+
+function MiniMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div
+      className="
+        rounded-lg
+        border
+        border-white/[0.07]
+        bg-white/[0.035]
+        px-2.5
+        py-2
+      "
+    >
+      <p
+        className="
+          truncate
+          text-[8px]
+          text-slate-500
+        "
+      >
+        {label}
+      </p>
+
+      <p
+        className="
+          mt-1
+          text-[12px]
+          font-semibold
+          text-white
+        "
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function ActivityRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div
+      className="
+        flex
+        items-center
+        justify-between
+        gap-3
+        text-[9px]
+      "
+    >
+      <span
+        className="
+          text-slate-400
+        "
+      >
+        {label}
+      </span>
+
+      <strong
+        className="
+          font-medium
+          text-slate-200
+        "
+      >
+        {value}
+      </strong>
+    </div>
+  );
+}
+
+function Signal({
+  children,
+}: {
+  children:
+    React.ReactNode;
+}) {
+  return (
+    <span
+      className="
+        rounded-md
+
+        border
+        border-white/[0.08]
+
+        bg-white/[0.05]
+
+        px-2
+        py-1
+
+        text-[8px]
+        text-slate-300
+      "
+    >
+      {children}
+    </span>
+  );
+}
+
+function Reason({
+  children,
+}: {
+  children:
+    React.ReactNode;
+}) {
+  return (
+    <div
+      className="
+        flex
+        items-start
+        gap-2
+
+        text-[9px]
+        leading-4
+        text-slate-300
+      "
+    >
+      <Check
+        size={11}
+        className="
+          mt-[2px]
+          shrink-0
+          text-emerald-400
+        "
+      />
+
+      <span>
+        {children}
+      </span>
+    </div>
   );
 }

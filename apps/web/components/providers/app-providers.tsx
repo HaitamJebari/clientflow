@@ -1,18 +1,13 @@
 'use client';
 
-import {
-  Toaster,
-} from 'sonner';
+import { Toaster } from 'sonner';
 
-import {
-  AuthProvider,
-} from './auth-provider';
+import { AuthProvider } from './auth-provider';
 
 export function AppProviders({
   children,
 }: {
-  children:
-    React.ReactNode;
+  children: React.ReactNode;
 }) {
   return (
     <AuthProvider>

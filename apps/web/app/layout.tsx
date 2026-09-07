@@ -1,55 +1,40 @@
-import type {
-  Metadata,
-} from 'next';
-
-import {
-  Geist,
-} from 'next/font/google';
+import type { Metadata } from 'next';
+import { Geist } from 'next/font/google';
 
 import './globals.css';
 
-import {
-  AppProviders,
-} from '@/components/providers/app-providers';
+import { AppProviders } from '@/components/providers/app-providers';
+import { ThemeProvider } from '@/components/providers/theme-provider';
 
-const geist =
-  Geist({
-    subsets: ['latin'],
+const geist = Geist({
+  subsets: ['latin'],
+  variable: '--font-geist',
+});
 
-    variable:
-      '--font-geist',
-  });
-
-export const metadata:
-  Metadata = {
-  title: {
-    default:
-      'ClientFlow',
-
-    template:
-      '%s | ClientFlow',
-  },
-
+export const metadata: Metadata = {
+  title: 'ClientFlow',
   description:
-    'Turn opportunities into revenue with ClientFlow.',
+    'AI-powered client acquisition platform for freelancers and small agencies.',
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children:
-    React.ReactNode;
+  children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      suppressHydrationWarning
+    >
       <body
-        className={
-          geist.className
-        }
+        className={geist.className}
       >
-        <AppProviders>
-          {children}
-        </AppProviders>
+        <ThemeProvider>
+          <AppProviders>
+            {children}
+          </AppProviders>
+        </ThemeProvider>
       </body>
     </html>
   );

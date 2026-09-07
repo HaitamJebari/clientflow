@@ -1,85 +1,136 @@
 @import "tailwindcss";
 
+/* ==========================================================
+   CLIENTFLOW THEME
+========================================================== */
+
 :root {
-  --cf-navy: #080d1a;
-  --cf-navy-soft: #101729;
-  --cf-navy-elevated: #171f32;
+  color-scheme: light;
+
+  --cf-page: #f7f8fa;
+  --cf-surface: #ffffff;
+  --cf-surface-soft: #f3f5f8;
+  --cf-surface-hover: #f7f8fa;
+
+  --cf-text: #111827;
+  --cf-text-secondary: #4b5563;
+  --cf-text-muted: #6b7280;
+
+  --cf-border: #e2e6ec;
+  --cf-border-soft: #eceff3;
 
   --cf-primary: #5b5bf7;
   --cf-primary-hover: #4d4ddd;
-  --cf-primary-soft: #edecff;
+  --cf-primary-soft: #eeedff;
 
-  --cf-bg: #f5f7fb;
-  --cf-surface: #ffffff;
-  --cf-surface-soft: #f8fafc;
+  --cf-success: #27805f;
+  --cf-success-soft: #e9f5ef;
 
-  --cf-border: #dce2eb;
-  --cf-border-soft: #edf0f5;
+  --cf-warning: #9a6413;
+  --cf-warning-soft: #fff5e5;
 
-  --cf-text: #101729;
-  --cf-text-secondary: #596579;
-  --cf-text-muted: #7b8799;
+  --cf-info: #2767a9;
+  --cf-info-soft: #eaf3ff;
 
-  --cf-success: #17664e;
-  --cf-success-bg: #e8f4ee;
+  /* Sidebar */
+  --cf-sidebar: #f4f4f5;
+  --cf-sidebar-elevated: #ffffff;
+  --cf-sidebar-hover: #e9e9ec;
+  --cf-sidebar-active: #e4e4e8;
+  --cf-sidebar-border: #e1e1e5;
+  --cf-sidebar-text: #202123;
+  --cf-sidebar-muted: #5f6672;
 
-  --cf-warning: #875914;
-  --cf-warning-bg: #fff2da;
+  /* Topbar */
+  --cf-topbar: rgba(255, 255, 255, 0.88);
 
-  --cf-danger: #b33340;
-  --cf-danger-bg: #fbecef;
-
-  --cf-info: #245ca4;
-  --cf-info-bg: #eaf1fb;
-
-  --cf-radius-sm: 6px;
-  --cf-radius-md: 9px;
-  --cf-radius-lg: 12px;
-
-  --cf-shadow-sm:
+  --cf-shadow:
     0 1px 2px rgb(16 23 41 / 0.03),
-    0 4px 12px rgb(16 23 41 / 0.03);
-
-  --cf-shadow-lg:
-    0 24px 70px rgb(0 0 0 / 0.22);
+    0 10px 30px rgb(16 23 41 / 0.04);
 }
 
-* {
+.dark {
+  color-scheme: dark;
+
+  --cf-page: #0d1117;
+  --cf-surface: #131821;
+  --cf-surface-soft: #181e29;
+  --cf-surface-hover: #1b222e;
+
+  --cf-text: #f3f5f8;
+  --cf-text-secondary: #c3ccda;
+  --cf-text-muted: #94a0b2;
+
+  --cf-border: #293142;
+  --cf-border-soft: #202838;
+
+  --cf-primary: #7770ff;
+  --cf-primary-hover: #6962f1;
+  --cf-primary-soft: rgba(119, 112, 255, 0.14);
+
+  --cf-success: #55c99b;
+  --cf-success-soft: rgba(85, 201, 155, 0.11);
+
+  --cf-warning: #e3aa4f;
+  --cf-warning-soft: rgba(227, 170, 79, 0.1);
+
+  --cf-info: #68a9ff;
+  --cf-info-soft: rgba(104, 169, 255, 0.1);
+
+  /* Sidebar */
+  --cf-sidebar: #090d14;
+  --cf-sidebar-elevated: #111722;
+  --cf-sidebar-hover: #171e2a;
+  --cf-sidebar-active: #1c2432;
+  --cf-sidebar-border: #1d2634;
+  --cf-sidebar-text: #f4f6f9;
+  --cf-sidebar-muted: #a1acbc;
+
+  /* Topbar */
+  --cf-topbar: rgba(13, 17, 23, 0.88);
+
+  --cf-shadow:
+    0 1px 2px rgb(0 0 0 / 0.2),
+    0 12px 35px rgb(0 0 0 / 0.16);
+}
+
+
+/* ==========================================================
+   GLOBAL
+========================================================== */
+
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
 html {
   min-height: 100%;
-  background: var(--cf-bg);
+  background: var(--cf-page);
 }
 
 body {
   min-height: 100vh;
   margin: 0;
 
-  background: var(--cf-bg);
+  overflow-x: hidden;
+
+  background: var(--cf-page);
   color: var(--cf-text);
 
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
+
   font-family:
+    var(--font-geist),
     Arial,
     Helvetica,
     sans-serif;
 
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-}
-
-html,
-body {
-  overflow-x: hidden;
-}
-
-@media (min-width: 1024px) {
-  html,
-  body {
-    height: 100%;
-    overflow: hidden;
-  }
 }
 
 button,
@@ -97,15 +148,26 @@ button:disabled {
   cursor: not-allowed;
 }
 
-::selection {
-  background: #dcdafd;
-  color: #292361;
+
+/* ==========================================================
+   HIDDEN SIDEBAR SCROLLBAR
+========================================================== */
+
+.cf-sidebar-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior: contain;
 }
 
-:focus-visible {
-  outline: 3px solid rgba(91, 91, 247, 0.25);
-  outline-offset: 2px;
+.cf-sidebar-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
+
+/* ==========================================================
+   BASIC PAGE MOTION
+========================================================== */
 
 @keyframes cf-page-in {
   from {
@@ -138,54 +200,166 @@ button:disabled {
   animation: cf-float 5s ease-in-out infinite;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    animation: none !important;
-    transition: none !important;
-  }
+/* ==========================================================
+   SIDEBAR TOOLTIP
+========================================================== */
+
+.cf-sidebar-tooltip {
+  pointer-events: none;
+
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+
+  z-index: 100;
+
+  transform:
+    translateY(-50%)
+    translateX(-4px);
+
+  white-space: nowrap;
+
+  border: 1px solid var(--cf-border);
+
+  border-radius: 8px;
+
+  background: var(--cf-surface);
+
+  padding: 6px 9px;
+
+  color: var(--cf-text);
+
+  font-size: 11px;
+  font-weight: 500;
+
+  opacity: 0;
+
+  box-shadow:
+    0 8px 25px
+    rgb(0 0 0 / 0.13);
+
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
 }
 
-.clientflow-swal {
-  width: min(440px, calc(100vw - 32px)) !important;
+.group:hover > .cf-sidebar-tooltip {
+  opacity: 1;
 
-  border: 1px solid var(--cf-border) !important;
-  border-radius: 12px !important;
+  transform:
+    translateY(-50%)
+    translateX(0);
+}
+
+/* ==========================================================
+   AUTH INPUTS
+========================================================== */
+
+.cf-auth-input {
+  width: 100%;
+  height: 44px;
+
+  padding: 0 12px;
+
+  border: 1px solid #cbd3df;
+  border-radius: 6px;
+
+  background: #ffffff;
+  color: #101729;
+
+  font-size: 14px;
+
+  outline: none;
+
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease;
+}
+
+.cf-auth-input::placeholder {
+  color: #9aa4b4;
+}
+
+.cf-auth-input:hover {
+  border-color: #b8c1cf;
+}
+
+.cf-auth-input:focus {
+  border-color: var(--cf-primary);
+
+  box-shadow:
+    0 0 0 4px
+    rgb(91 91 247 / 0.1);
+}
+
+.cf-auth-input[aria-invalid="true"] {
+  border-color: #d85b67;
+
+  box-shadow:
+    0 0 0 4px
+    rgb(179 51 64 / 0.05);
+}
+
+
+/* ==========================================================
+   SWEETALERT2 — CLIENTFLOW THEME
+========================================================== */
+
+.clientflow-swal {
+  width: min(
+    440px,
+    calc(100vw - 32px)
+  ) !important;
 
   padding: 28px !important;
 
-  background: white !important;
+  border: 1px solid
+    var(--cf-border) !important;
+
+  border-radius: 12px !important;
+
+  background: #ffffff !important;
 
   box-shadow:
-    0 30px 90px rgb(8 13 26 / 0.18) !important;
+    0 30px 90px
+    rgb(8 13 26 / 0.18) !important;
 }
 
 .clientflow-swal-title {
-  padding: 0 !important;
   margin: 0 !important;
+  padding: 0 !important;
 
-  color: var(--cf-text) !important;
+  color:
+    var(--cf-text) !important;
 
   font-size: 20px !important;
   font-weight: 600 !important;
-  letter-spacing: -0.4px !important;
+
+  letter-spacing:
+    -0.4px !important;
 
   text-align: left !important;
 }
 
 .clientflow-swal-text {
+  margin:
+    10px 0 0 !important;
+
   padding: 0 !important;
 
-  margin: 10px 0 0 !important;
-
-  color: var(--cf-text-secondary) !important;
+  color:
+    var(
+      --cf-text-secondary
+    ) !important;
 
   font-size: 13px !important;
-  line-height: 1.65 !important;
 
-  text-align: left !important;
+  line-height:
+    1.65 !important;
+
+  text-align:
+    left !important;
 }
 
 .clientflow-swal-actions {
@@ -194,10 +368,10 @@ button:disabled {
   margin:
     24px 0 0 !important;
 
+  gap: 8px !important;
+
   justify-content:
     flex-end !important;
-
-  gap: 8px !important;
 }
 
 .clientflow-swal-confirm,
@@ -210,6 +384,12 @@ button:disabled {
 
   font-size: 13px;
   font-weight: 500;
+
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .clientflow-swal-confirm {
@@ -219,103 +399,735 @@ button:disabled {
   background:
     var(--cf-primary);
 
-  color: white;
+  color: #ffffff;
 }
 
 .clientflow-swal-confirm:hover {
   background:
     var(--cf-primary-hover);
+
+  border-color:
+    var(--cf-primary-hover);
+
+  box-shadow:
+    0 5px 14px
+    rgb(91 91 247 / 0.2);
+}
+
+.clientflow-swal-confirm:active {
+  transform:
+    translateY(1px);
 }
 
 .clientflow-swal-cancel {
   border: 1px solid
     var(--cf-border);
 
-  background: white;
+  background: #ffffff;
 
-  color: var(--cf-text);
+  color:
+    var(--cf-text);
 }
 
-.cf-auth-perspective {
-  perspective: 1600px;
-  perspective-origin: 40% 35%;
+.clientflow-swal-cancel:hover {
+  background:
+    var(--cf-surface-soft);
 }
 
-.cf-auth-board {
+
+/* ==========================================================
+   NEW CLIENTFLOW AUTH 3D SCENE
+========================================================== */
+
+.cf-register-scene {
+  perspective: 1500px;
+  perspective-origin: 52% 36%;
+
+  transform-style:
+    preserve-3d;
+}
+
+
+/* ==========================================================
+   MAIN 3D BOARD
+========================================================== */
+
+.cf-register-board {
   transform:
-    rotateX(14deg)
-    rotateY(-16deg)
-    rotateZ(1deg);
-  transform-style: preserve-3d;
-  will-change: transform;
+    rotateX(7deg)
+    rotateY(-10deg)
+    rotateZ(0.5deg);
+
+  transform-style:
+    preserve-3d;
+
+  will-change:
+    transform;
+
+  animation:
+    cf-board-enter
+    700ms
+    cubic-bezier(
+      0.2,
+      0.7,
+      0.25,
+      1
+    )
+    both;
 }
 
-.cf-auth-card {
-  transform-style: preserve-3d;
-  will-change: transform;
+@keyframes cf-board-enter {
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(18px)
+      rotateX(9deg)
+      rotateY(-13deg)
+      rotateZ(0.8deg);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateY(0)
+      rotateX(7deg)
+      rotateY(-10deg)
+      rotateZ(0.5deg);
+  }
 }
 
-.cf-auth-card-one {
-  animation: cf-float-one 6s ease-in-out infinite;
+
+/* ==========================================================
+   FLOATING 3D CARDS
+========================================================== */
+
+.cf-register-float-one,
+.cf-register-float-two,
+.cf-register-float-three {
+  transform-style:
+    preserve-3d;
+
+  will-change:
+    transform;
 }
 
-.cf-auth-card-two {
-  animation: cf-float-two 7s ease-in-out infinite;
+.cf-register-float-one {
+  animation:
+    cf-register-float-one
+    6s
+    ease-in-out
+    infinite;
 }
 
-.cf-auth-card-three {
-  animation: cf-float-three 6.5s ease-in-out infinite;
+.cf-register-float-two {
+  animation:
+    cf-register-float-two
+    7s
+    ease-in-out
+    infinite;
 }
 
-@keyframes cf-float-one {
+.cf-register-float-three {
+  animation:
+    cf-register-float-three
+    6.5s
+    ease-in-out
+    infinite;
+}
+
+@keyframes cf-register-float-one {
   0%,
   100% {
     transform:
-      translateY(0)
-      translateZ(0)
-      rotateX(0deg)
-      rotateY(-8deg);
+      translate3d(
+        0,
+        0,
+        45px
+      )
+      rotateY(-7deg);
   }
 
   50% {
     transform:
-      translateY(-8px)
-      translateZ(18px)
-      rotateX(1deg)
-      rotateY(-10deg);
+      translate3d(
+        0,
+        -7px,
+        60px
+      )
+      rotateY(-9deg);
   }
 }
 
-@keyframes cf-float-two {
+@keyframes cf-register-float-two {
   0%,
   100% {
     transform:
-      translateY(0)
-      translateZ(0)
+      translate3d(
+        0,
+        0,
+        30px
+      )
+      rotateY(8deg);
+  }
+
+  50% {
+    transform:
+      translate3d(
+        0,
+        -8px,
+        45px
+      )
       rotateY(10deg);
   }
-
-  50% {
-    transform:
-      translateY(-10px)
-      translateZ(14px)
-      rotateY(13deg);
-  }
 }
 
-@keyframes cf-float-three {
+@keyframes cf-register-float-three {
   0%,
   100% {
     transform:
-      translateY(0)
-      translateZ(0)
+      translate3d(
+        0,
+        0,
+        38px
+      )
       rotateY(-6deg);
   }
 
   50% {
     transform:
-      translateY(-7px)
-      translateZ(12px)
-      rotateY(-9deg);
+      translate3d(
+        0,
+        -6px,
+        52px
+      )
+      rotateY(-8deg);
+  }
+}
+
+
+/* ==========================================================
+   SHORTER DESKTOP / LAPTOP SCREENS
+========================================================== */
+
+@media (
+  min-width: 1024px
+) and (
+  max-height: 850px
+) {
+  .cf-register-scene {
+    width: 111%;
+
+    transform:
+      scale(0.9);
+
+    transform-origin:
+      top left;
+  }
+}
+
+@media (
+  min-width: 1024px
+) and (
+  max-height: 760px
+) {
+  .cf-register-scene {
+    width: 128%;
+
+    transform:
+      scale(0.78);
+
+    transform-origin:
+      top left;
+  }
+}
+
+
+/* ==========================================================
+   SMALLER DESKTOP WIDTH
+========================================================== */
+
+@media (
+  min-width: 1024px
+) and (
+  max-width: 1280px
+) {
+  .cf-register-board {
+    width: 78%;
+  }
+
+  .cf-register-float-one {
+    right: 0;
+  }
+
+  .cf-register-float-three {
+    right: 2%;
+  }
+}
+
+
+/* ==========================================================
+   MOBILE
+========================================================== */
+
+@media (
+  max-width: 1023px
+) {
+  body {
+    overflow-y: auto;
+  }
+}
+
+
+/* ==========================================================
+   REDUCED MOTION / ACCESSIBILITY
+========================================================== */
+
+@media (
+  prefers-reduced-motion:
+  reduce
+) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior:
+      auto !important;
+
+    animation:
+      none !important;
+
+    transition:
+      none !important;
+  }
+
+  .cf-register-board {
+    transform:
+      rotateX(7deg)
+      rotateY(-10deg)
+      rotateZ(0.5deg);
+  }
+
+  .cf-register-float-one {
+    transform:
+      translate3d(
+        0,
+        0,
+        45px
+      );
+  }
+
+  .cf-register-float-two {
+    transform:
+      translate3d(
+        0,
+        0,
+        30px
+      );
+  }
+
+  .cf-register-float-three {
+    transform:
+      translate3d(
+        0,
+        0,
+        38px
+      );
+  }
+}
+/* ==========================================================
+   AUTH FORM TRANSITIONS
+   Only the white form moves.
+========================================================== */
+
+.cf-auth-form-login {
+  animation:
+    cf-auth-login-enter
+    420ms
+    cubic-bezier(0.22, 1, 0.36, 1)
+    both;
+}
+
+.cf-auth-form-register {
+  animation:
+    cf-auth-register-enter
+    420ms
+    cubic-bezier(0.22, 1, 0.36, 1)
+    both;
+}
+
+
+/* Register -> Login */
+@keyframes cf-auth-login-enter {
+  from {
+    opacity: 0;
+
+    transform:
+      translateX(-22px)
+      scale(0.99);
+
+    filter: blur(3px);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateX(0)
+      scale(1);
+
+    filter: blur(0);
+  }
+}
+
+
+/* Login -> Register */
+@keyframes cf-auth-register-enter {
+  from {
+    opacity: 0;
+
+    transform:
+      translateX(22px)
+      scale(0.99);
+
+    filter: blur(3px);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateX(0)
+      scale(1);
+
+    filter: blur(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cf-auth-form-login,
+  .cf-auth-form-register {
+    animation: none !important;
+  }
+}
+/* ==========================================================
+   DASHBOARD
+========================================================== */
+
+.cf-dashboard-enter {
+  animation:
+    cf-dashboard-enter
+    420ms
+    cubic-bezier(0.22, 1, 0.36, 1)
+    both;
+}
+
+@keyframes cf-dashboard-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-dashboard-enter {
+    animation: none !important;
+  }
+}
+/* ==========================================================
+   SIDEBAR SCROLL
+   Scrollable without visible scrollbar
+========================================================== */
+
+.cf-sidebar-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  overscroll-behavior: contain;
+}
+
+.cf-sidebar-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+/* ==========================================================
+   CLIENTFLOW TOOLTIPS
+========================================================== */
+
+[data-tooltip] {
+  position: relative;
+}
+
+/* Tooltip box */
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+
+  position: absolute;
+
+  z-index: 9999;
+
+  left: 50%;
+  top: calc(100% + 9px);
+
+  width: max-content;
+  max-width: 220px;
+
+  padding: 7px 9px;
+
+  border: 1px solid var(--cf-border);
+
+  border-radius: 7px;
+
+  background: var(--cf-text);
+  color: var(--cf-surface);
+
+  box-shadow:
+    0 7px 20px
+    rgb(0 0 0 / 0.14);
+
+  font-size: 11px;
+  font-weight: 500;
+
+  line-height: 1.2;
+
+  white-space: nowrap;
+
+  pointer-events: none;
+
+  opacity: 0;
+
+  transform:
+    translateX(-50%)
+    translateY(-3px)
+    scale(0.96);
+
+  transform-origin: top center;
+
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+
+  transition-delay: 80ms;
+}
+
+
+/* Tiny arrow */
+
+[data-tooltip]::before {
+  content: "";
+
+  position: absolute;
+
+  z-index: 9999;
+
+  left: 50%;
+  top: calc(100% + 4px);
+
+  width: 8px;
+  height: 8px;
+
+  background: var(--cf-text);
+
+  transform:
+    translateX(-50%)
+    rotate(45deg);
+
+  pointer-events: none;
+
+  opacity: 0;
+
+  transition:
+    opacity 140ms ease;
+
+  transition-delay: 80ms;
+}
+
+
+/* Show */
+
+[data-tooltip]:hover::after,
+[data-tooltip]:hover::before,
+[data-tooltip]:focus-visible::after,
+[data-tooltip]:focus-visible::before {
+  opacity: 1;
+}
+
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after {
+  transform:
+    translateX(-50%)
+    translateY(0)
+    scale(1);
+}
+
+
+/* ==========================================================
+   TOOLTIP — TOP
+========================================================== */
+
+[data-tooltip-position="top"]::after {
+  top: auto;
+  bottom: calc(100% + 9px);
+
+  transform:
+    translateX(-50%)
+    translateY(3px)
+    scale(0.96);
+
+  transform-origin:
+    bottom center;
+}
+
+[data-tooltip-position="top"]::before {
+  top: auto;
+  bottom: calc(100% + 5px);
+}
+
+[data-tooltip-position="top"]:hover::after,
+[data-tooltip-position="top"]:focus-visible::after {
+  transform:
+    translateX(-50%)
+    translateY(0)
+    scale(1);
+}
+
+
+/* ==========================================================
+   TOOLTIP — RIGHT
+========================================================== */
+
+[data-tooltip-position="right"]::after {
+  top: 50%;
+  left: calc(100% + 10px);
+
+  transform:
+    translateY(-50%)
+    translateX(-3px)
+    scale(0.96);
+
+  transform-origin:
+    left center;
+}
+
+[data-tooltip-position="right"]::before {
+  top: 50%;
+  left: calc(100% + 5px);
+
+  transform:
+    translateY(-50%)
+    rotate(45deg);
+}
+
+[data-tooltip-position="right"]:hover::after,
+[data-tooltip-position="right"]:focus-visible::after {
+  transform:
+    translateY(-50%)
+    translateX(0)
+    scale(1);
+}
+
+
+/* ==========================================================
+   TOOLTIP — LEFT
+========================================================== */
+
+[data-tooltip-position="left"]::after {
+  top: 50%;
+  right: calc(100% + 10px);
+  left: auto;
+
+  transform:
+    translateY(-50%)
+    translateX(3px)
+    scale(0.96);
+
+  transform-origin:
+    right center;
+}
+
+[data-tooltip-position="left"]::before {
+  top: 50%;
+  right: calc(100% + 5px);
+  left: auto;
+
+  transform:
+    translateY(-50%)
+    rotate(45deg);
+}
+
+[data-tooltip-position="left"]:hover::after,
+[data-tooltip-position="left"]:focus-visible::after {
+  transform:
+    translateY(-50%)
+    translateX(0)
+    scale(1);
+}
+
+
+/* ==========================================================
+   ACCESSIBILITY
+========================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  [data-tooltip]::after,
+  [data-tooltip]::before {
+    transition: none !important;
+  }
+}
+
+/* ==========================================================
+   SIDEBAR PORTAL TOOLTIP
+========================================================== */
+
+.cf-sidebar-tooltip-content {
+  animation:
+    cf-sidebar-tooltip-in
+    140ms
+    cubic-bezier(0.22, 1, 0.36, 1)
+    both;
+}
+
+.cf-sidebar-tooltip-content-left {
+  animation-name:
+    cf-sidebar-tooltip-in-left;
+}
+
+
+@keyframes cf-sidebar-tooltip-in {
+  from {
+    opacity: 0;
+    transform:
+      translateX(-5px)
+      scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform:
+      translateX(0)
+      scale(1);
+  }
+}
+
+
+@keyframes cf-sidebar-tooltip-in-left {
+  from {
+    opacity: 0;
+    transform:
+      translateX(5px)
+      scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform:
+      translateX(0)
+      scale(1);
   }
 }

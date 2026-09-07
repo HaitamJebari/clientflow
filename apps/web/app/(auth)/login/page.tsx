@@ -154,7 +154,7 @@ export default function LoginPage() {
     <AuthShell mode="login">
       <div
         className="
-          cf-page-enter
+          cf-auth-form-login
         "
       >
         <div
@@ -192,7 +192,7 @@ export default function LoginPage() {
               mt-3
               text-[13px]
               leading-6
-              text-[#596579]
+              text-[var(--cf-text-secondary)]
             "
           >
             Welcome back.
@@ -361,7 +361,7 @@ export default function LoginPage() {
                   justify-center
                   rounded-md
                   text-[#7b8799]
-                  hover:bg-[#f5f7fb]
+                  hover:bg-[var(--cf-page)]
                 "
               >
                 {showPassword ? (
@@ -398,7 +398,7 @@ export default function LoginPage() {
               items-center
               gap-2
               text-xs
-              text-[#596579]
+              text-[var(--cf-text-secondary)]
             "
           >
             <input
@@ -534,7 +534,7 @@ export default function LoginPage() {
             mt-7
             text-center
             text-xs
-            text-[#596579]
+            text-[var(--cf-text-secondary)]
           "
         >
           New to
