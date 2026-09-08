@@ -114,7 +114,7 @@ body {
   min-height: 100vh;
   margin: 0;
 
-  overflow-x: hidden;
+  overflow-x: clip;
 
   background: var(--cf-page);
   color: var(--cf-text);
@@ -952,14 +952,11 @@ button:disabled {
 /* Show */
 
 [data-tooltip]:hover::after,
-[data-tooltip]:hover::before,
-[data-tooltip]:focus-visible::after,
-[data-tooltip]:focus-visible::before {
+[data-tooltip]:hover::before{
   opacity: 1;
 }
 
-[data-tooltip]:hover::after,
-[data-tooltip]:focus-visible::after {
+[data-tooltip]:hover::after{
   transform:
     translateX(-50%)
     translateY(0)
@@ -968,29 +965,21 @@ button:disabled {
 
 
 /* ==========================================================
-   TOOLTIP — TOP
+   TOOLTIP SHOW / HIDE
 ========================================================== */
 
-[data-tooltip-position="top"]::after {
-  top: auto;
-  bottom: calc(100% + 9px);
+/*
+  Show normally on hover.
+  But after a button is clicked, hide the tooltip until
+  the pointer leaves the button.
+*/
 
-  transform:
-    translateX(-50%)
-    translateY(3px)
-    scale(0.96);
-
-  transform-origin:
-    bottom center;
+[data-tooltip]:not([data-tooltip-clicked="true"]):hover::after,
+[data-tooltip]:not([data-tooltip-clicked="true"]):hover::before {
+  opacity: 1;
 }
 
-[data-tooltip-position="top"]::before {
-  top: auto;
-  bottom: calc(100% + 5px);
-}
-
-[data-tooltip-position="top"]:hover::after,
-[data-tooltip-position="top"]:focus-visible::after {
+[data-tooltip]:not([data-tooltip-clicked="true"]):hover::after {
   transform:
     translateX(-50%)
     translateY(0)
@@ -998,34 +987,19 @@ button:disabled {
 }
 
 
-/* ==========================================================
-   TOOLTIP — RIGHT
-========================================================== */
+/* TOP */
 
-[data-tooltip-position="right"]::after {
-  top: 50%;
-  left: calc(100% + 10px);
-
+[data-tooltip-position="top"]:not([data-tooltip-clicked="true"]):hover::after {
   transform:
-    translateY(-50%)
-    translateX(-3px)
-    scale(0.96);
-
-  transform-origin:
-    left center;
+    translateX(-50%)
+    translateY(0)
+    scale(1);
 }
 
-[data-tooltip-position="right"]::before {
-  top: 50%;
-  left: calc(100% + 5px);
 
-  transform:
-    translateY(-50%)
-    rotate(45deg);
-}
+/* RIGHT */
 
-[data-tooltip-position="right"]:hover::after,
-[data-tooltip-position="right"]:focus-visible::after {
+[data-tooltip-position="right"]:not([data-tooltip-clicked="true"]):hover::after {
   transform:
     translateY(-50%)
     translateX(0)
@@ -1033,42 +1007,35 @@ button:disabled {
 }
 
 
-/* ==========================================================
-   TOOLTIP — LEFT
-========================================================== */
+/* LEFT */
 
-[data-tooltip-position="left"]::after {
-  top: 50%;
-  right: calc(100% + 10px);
-  left: auto;
-
-  transform:
-    translateY(-50%)
-    translateX(3px)
-    scale(0.96);
-
-  transform-origin:
-    right center;
-}
-
-[data-tooltip-position="left"]::before {
-  top: 50%;
-  right: calc(100% + 5px);
-  left: auto;
-
-  transform:
-    translateY(-50%)
-    rotate(45deg);
-}
-
-[data-tooltip-position="left"]:hover::after,
-[data-tooltip-position="left"]:focus-visible::after {
+[data-tooltip-position="left"]:not([data-tooltip-clicked="true"]):hover::after {
   transform:
     translateY(-50%)
     translateX(0)
     scale(1);
 }
 
+
+/* Force-hide after click */
+
+[data-tooltip][data-tooltip-clicked="true"]::after,
+[data-tooltip][data-tooltip-clicked="true"]::before {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* ==========================================================
+   DISABLE TOOLTIPS ON MOBILE / TOUCH
+========================================================== */
+
+@media (hover: none), (pointer: coarse) {
+  [data-tooltip]::before,
+  [data-tooltip]::after {
+    display: none !important;
+    content: none !important;
+  }
+}
 
 /* ==========================================================
    ACCESSIBILITY
@@ -1129,5 +1096,215 @@ button:disabled {
     transform:
       translateX(0)
       scale(1);
+  }
+}
+/* ==========================================================
+   RESPONSIVE CLIENTFLOW BASE
+========================================================== */
+
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+main,
+section,
+article,
+header,
+nav,
+aside,
+div {
+  min-width: 0;
+}
+
+img,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+
+/* ==========================================================
+   MOBILE / TOUCH
+
+   Tooltips should never stay visible after a mobile tap.
+========================================================== */
+
+@media (hover: none), (pointer: coarse) {
+  [data-tooltip]::before,
+  [data-tooltip]::after {
+    display: none !important;
+    content: none !important;
+  }
+}
+
+
+/* ==========================================================
+   MOBILE APP
+========================================================== */
+
+@media (max-width: 639px) {
+  /*
+   Prevent excessively large text from breaking tiny screens.
+   Existing responsive Tailwind sizes still control components.
+  */
+
+  .cf-dashboard-enter {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+
+/* ==========================================================
+   SIDEBAR TOOLTIP
+========================================================== */
+
+.cf-sidebar-tooltip-content {
+  animation:
+    cf-sidebar-tooltip-in
+    140ms
+    cubic-bezier(0.22, 1, 0.36, 1)
+    both;
+}
+
+@keyframes cf-sidebar-tooltip-in {
+  from {
+    opacity: 0;
+
+    transform:
+      translateX(-5px)
+      scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateX(0)
+      scale(1);
+  }
+}
+/* ==========================================================
+   CLIENTFLOW GLOBAL PORTAL TOOLTIPS
+
+   Old ::before / ::after tooltips are disabled.
+   Tooltips are now rendered through GlobalTooltip into
+   document.body so they can never be clipped by cards,
+   tables, overflow containers, topbar, etc.
+========================================================== */
+
+[data-tooltip]::before,
+[data-tooltip]::after {
+  display: none !important;
+  content: none !important;
+}
+
+
+/* ==========================================================
+   PORTAL TOOLTIP ANIMATION
+========================================================== */
+
+.cf-global-tooltip {
+  animation:
+    cf-global-tooltip-in
+    120ms
+    cubic-bezier(0.22, 1, 0.36, 1)
+    both;
+}
+
+
+@keyframes cf-global-tooltip-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-global-tooltip {
+    animation: none;
+  }
+}
+
+
+/* Touch devices don't need hover tooltips */
+
+@media (hover: none), (pointer: coarse) {
+  .cf-global-tooltip {
+    display: none !important;
+  }
+}
+/* ==========================================================
+   TOOLTIP STACKING ORDER
+
+   Card       -> normal layer
+   Tooltip    -> z-index 20
+   Button     -> z-index 21
+   Topbar     -> z-index 30
+   Sidebar    -> z-index 50
+========================================================== */
+
+[data-tooltip] {
+  position: relative;
+  z-index: 21;
+}
+/* ==========================================================
+   CLIENTFLOW UI LAYERS
+
+   Page/Card       < Tooltip < Active button < Topbar < Sidebar
+========================================================== */
+
+[data-tooltip] {
+  position: relative;
+}
+
+
+/* The hovered/focused control itself stays ABOVE its tooltip */
+
+@media (hover: hover) and (pointer: fine) {
+  [data-tooltip]:hover,
+  [data-tooltip]:focus-visible {
+    z-index: 26;
+  }
+}
+
+
+/* ==========================================================
+   TOOLTIP
+
+   Tooltip is above cards/content, but below the button,
+   topbar and sidebar.
+========================================================== */
+
+.cf-global-tooltip {
+  z-index: 25;
+}
+
+
+/* ==========================================================
+   TOUCH DEVICES
+
+   Phones and touch tablets do not show hover tooltips.
+========================================================== */
+
+@media (hover: none), (pointer: coarse) {
+  .cf-global-tooltip {
+    display: none !important;
+  }
+
+  [data-tooltip]::before,
+  [data-tooltip]::after {
+    display: none !important;
+    content: none !important;
   }
 }

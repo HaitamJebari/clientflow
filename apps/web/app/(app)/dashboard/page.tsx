@@ -18,6 +18,11 @@ import type { ElementType } from 'react';
 
 import { useAuth } from '@/components/providers/auth-provider';
 
+
+/* =========================================================
+   MOCK DASHBOARD DATA
+========================================================= */
+
 const attentionItems = [
   {
     company: 'Acme Studio',
@@ -35,6 +40,7 @@ const attentionItems = [
     accent: 'warning',
     icon: Clock3,
   },
+
   {
     company: 'TechCorp',
     initials: 'TC',
@@ -50,6 +56,7 @@ const attentionItems = [
     accent: 'primary',
     icon: FileText,
   },
+
   {
     company: 'StartupX',
     initials: 'SX',
@@ -67,6 +74,7 @@ const attentionItems = [
   },
 ];
 
+
 const pipelineStages = [
   {
     label: 'New',
@@ -74,18 +82,21 @@ const pipelineStages = [
     count: 5,
     width: '18%',
   },
+
   {
     label: 'Qualified',
     value: '€8k',
     count: 4,
     width: '33%',
   },
+
   {
     label: 'Proposal',
     value: '€7k',
     count: 3,
     width: '29%',
   },
+
   {
     label: 'Negotiation',
     value: '€5k',
@@ -94,16 +105,25 @@ const pipelineStages = [
   },
 ];
 
+
+/* =========================================================
+   DASHBOARD PAGE
+========================================================= */
+
 export default function DashboardPage() {
   const { user } = useAuth();
 
   const firstName =
     user?.firstName || 'there';
 
+
   return (
     <div
       className="
         cf-dashboard-enter
+
+        min-w-0
+
         text-[var(--cf-text)]
       "
     >
@@ -122,27 +142,38 @@ export default function DashboardPage() {
           lg:items-end
         "
       >
-        <div>
+        <div
+          className="
+            min-w-0
+          "
+        >
           <div
             className="
               mb-3
+
               flex
               items-center
               gap-2
 
-              text-[12px]
+              text-[11px]
               font-semibold
               uppercase
               tracking-[0.15em]
 
               text-[var(--cf-text-secondary)]
+
+              sm:text-[12px]
             "
           >
             <span
               className="
                 h-2
                 w-2
+
+                shrink-0
+
                 rounded-full
+
                 bg-[var(--cf-success)]
               "
             />
@@ -150,34 +181,46 @@ export default function DashboardPage() {
             Workspace overview
           </div>
 
+
           <h1
             className="
-              text-[42px]
+              text-[30px]
               font-semibold
-              tracking-[-1.5px]
+              leading-[1.1]
+              tracking-[-1px]
 
               text-[var(--cf-text)]
 
-              sm:text-[48px]
+              sm:text-[38px]
+
+              lg:text-[48px]
+              lg:tracking-[-1.5px]
             "
           >
             Good afternoon, {firstName}
           </h1>
 
+
           <p
             className="
               mt-3
 
-              text-[16px]
-              leading-7
+              max-w-[720px]
+
+              text-[14px]
+              leading-6
 
               text-[var(--cf-text-secondary)]
+
+              sm:text-[16px]
+              sm:leading-7
             "
           >
             Here&apos;s what needs your
             attention to keep revenue moving.
           </p>
         </div>
+
 
         <button
           type="button"
@@ -186,7 +229,7 @@ export default function DashboardPage() {
           data-tooltip-position="bottom"
           className="
             flex
-            h-12
+            h-11
             items-center
             justify-center
             gap-2
@@ -197,18 +240,24 @@ export default function DashboardPage() {
 
             bg-[var(--cf-primary)]
 
-            px-5
+            px-4
 
-            text-[15px]
+            text-[14px]
             font-semibold
             text-white
 
             shadow-[0_6px_18px_rgba(91,91,247,.2)]
 
-            transition
+            transition-all
+
+            active:scale-[0.98]
 
             hover:-translate-y-[1px]
             hover:bg-[var(--cf-primary-hover)]
+
+            sm:h-12
+            sm:px-5
+            sm:text-[15px]
           "
         >
           Add opportunity
@@ -219,19 +268,23 @@ export default function DashboardPage() {
         </button>
       </div>
 
+
       {/* ===================================================
           METRICS
       =================================================== */}
 
       <div
         className="
-          mt-8
+          mt-7
 
           grid
           grid-cols-1
-          gap-4
+          gap-3
 
-          md:grid-cols-2
+          sm:grid-cols-2
+          sm:gap-4
+
+          xl:mt-8
           xl:grid-cols-4
         "
       >
@@ -266,13 +319,14 @@ export default function DashboardPage() {
         />
       </div>
 
+
       {/* ===================================================
           NEEDS ATTENTION
       =================================================== */}
 
       <section
         className="
-          mt-7
+          mt-6
 
           overflow-hidden
 
@@ -287,8 +341,14 @@ export default function DashboardPage() {
 
           transition-colors
           duration-200
+
+          sm:mt-7
         "
       >
+        {/* =================================================
+            SECTION HEADER
+        ================================================= */}
+
         <div
           className="
             flex
@@ -299,18 +359,26 @@ export default function DashboardPage() {
             border-b
             border-[var(--cf-border-soft)]
 
-            px-6
-            py-6
+            px-4
+            py-5
 
-            sm:flex-row
-            sm:items-center
+            sm:px-5
+            sm:py-6
+
+            md:flex-row
+            md:items-center
+
+            lg:px-6
           "
         >
           <div
             className="
               flex
-              items-center
+              min-w-0
+              items-start
               gap-3
+
+              sm:items-center
             "
           >
             <div
@@ -318,6 +386,7 @@ export default function DashboardPage() {
                 flex
                 h-10
                 w-10
+                shrink-0
                 items-center
                 justify-center
 
@@ -333,25 +402,34 @@ export default function DashboardPage() {
               />
             </div>
 
-            <div>
+
+            <div
+              className="
+                min-w-0
+              "
+            >
               <div
                 className="
                   flex
+                  flex-wrap
                   items-center
                   gap-2
                 "
               >
                 <h2
                   className="
-                    text-[24px]
+                    text-[20px]
                     font-semibold
                     tracking-[-0.3px]
 
                     text-[var(--cf-text)]
+
+                    sm:text-[24px]
                   "
                 >
                   Needs attention
                 </h2>
+
 
                 <span
                   className="
@@ -362,23 +440,29 @@ export default function DashboardPage() {
                     px-2.5
                     py-[4px]
 
-                    text-[11px]
+                    text-[10px]
                     font-semibold
 
                     text-[var(--cf-primary)]
+
+                    sm:text-[11px]
                   "
                 >
                   3
                 </span>
               </div>
 
+
               <p
                 className="
-                  mt-[4px]
+                  mt-1
 
-                  text-[14px]
+                  text-[12px]
+                  leading-5
 
                   text-[var(--cf-text-secondary)]
+
+                  sm:text-[14px]
                 "
               >
                 Ranked by urgency, value and
@@ -387,20 +471,25 @@ export default function DashboardPage() {
             </div>
           </div>
 
+
           <div
             className="
               flex
               items-center
               gap-2
 
-              text-[12px]
+              text-[11px]
 
               text-[var(--cf-text-secondary)]
+
+              sm:text-[12px]
             "
           >
             <Sparkles
               size={12}
               className="
+                shrink-0
+
                 text-[var(--cf-primary)]
               "
             />
@@ -408,6 +497,11 @@ export default function DashboardPage() {
             AI-assisted prioritization
           </div>
         </div>
+
+
+        {/* =================================================
+            ATTENTION ITEMS
+        ================================================= */}
 
         <div>
           {attentionItems.map(
@@ -425,16 +519,20 @@ export default function DashboardPage() {
         </div>
       </section>
 
+
       {/* ===================================================
           LOWER GRID
       =================================================== */}
 
       <div
         className="
-          mt-7
+          mt-6
 
           grid
-          gap-5
+          gap-4
+
+          sm:mt-7
+          sm:gap-5
 
           xl:grid-cols-[1.4fr_.8fr]
         "
@@ -445,6 +543,8 @@ export default function DashboardPage() {
 
         <section
           className="
+            min-w-0
+
             rounded-[16px]
 
             border
@@ -452,48 +552,64 @@ export default function DashboardPage() {
 
             bg-[var(--cf-surface)]
 
-            p-6
+            p-4
 
             shadow-[var(--cf-shadow)]
 
             transition-colors
             duration-200
+
+            sm:p-6
           "
         >
           <div
             className="
               flex
-              items-center
+              items-start
               justify-between
               gap-4
+
+              sm:items-center
             "
           >
-            <div>
+            <div
+              className="
+                min-w-0
+              "
+            >
               <h2
                 className="
-                  text-[22px]
+                  text-[20px]
                   font-semibold
                   tracking-[-0.2px]
 
                   text-[var(--cf-text)]
+
+                  sm:text-[22px]
                 "
               >
                 Pipeline
               </h2>
 
+
               <p
                 className="
-                  mt-2
+                  mt-1.5
 
-                  text-[14px]
+                  text-[12px]
+                  leading-5
 
                   text-[var(--cf-text-secondary)]
+
+                  sm:mt-2
+                  sm:text-[14px]
                 "
               >
                 €24,500 across 14 open
                 opportunities
               </p>
             </div>
+
 
             <button
               type="button"
@@ -502,10 +618,11 @@ export default function DashboardPage() {
               data-tooltip-position="top"
               className="
                 flex
+                shrink-0
                 items-center
                 gap-1
 
-                text-[13px]
+                text-[12px]
                 font-semibold
 
                 text-[var(--cf-primary)]
@@ -513,6 +630,8 @@ export default function DashboardPage() {
                 transition
 
                 hover:opacity-80
+
+                sm:text-[13px]
               "
             >
               View pipeline
@@ -523,10 +642,14 @@ export default function DashboardPage() {
             </button>
           </div>
 
+
           <div
             className="
-              mt-8
-              space-y-6
+              mt-7
+              space-y-5
+
+              sm:mt-8
+              sm:space-y-6
             "
           >
             {pipelineStages.map(
@@ -541,48 +664,61 @@ export default function DashboardPage() {
                       flex
                       items-center
                       justify-between
+                      gap-3
                     "
                   >
                     <div
                       className="
                         flex
+                        min-w-0
                         items-center
                         gap-2
                       "
                     >
                       <span
                         className="
-                          text-[14px]
+                          text-[13px]
                           font-medium
 
                           text-[var(--cf-text)]
+
+                          sm:text-[14px]
                         "
                       >
                         {stage.label}
                       </span>
 
+
                       <span
                         className="
-                          text-[12px]
+                          text-[11px]
 
                           text-[var(--cf-text-secondary)]
+
+                          sm:text-[12px]
                         "
                       >
                         {stage.count} deals
                       </span>
                     </div>
 
+
                     <strong
                       className="
-                        text-[14px]
+                        shrink-0
+
+                        text-[13px]
                         font-semibold
 
                         text-[var(--cf-text)]
+
+                        sm:text-[14px]
                       "
                     >
                       {stage.value}
                     </strong>
                   </div>
+
 
                   <div
                     className="
@@ -597,7 +733,8 @@ export default function DashboardPage() {
                   >
                     <div
                       style={{
-                        width: stage.width,
+                        width:
+                          stage.width,
                       }}
                       className="
                         h-full
@@ -617,6 +754,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
+
         {/* =================================================
             REVENUE BRIEF
         ================================================= */}
@@ -625,6 +763,7 @@ export default function DashboardPage() {
           className="
             relative
 
+            min-w-0
             overflow-hidden
 
             rounded-[16px]
@@ -634,7 +773,7 @@ export default function DashboardPage() {
 
             bg-[var(--cf-surface)]
 
-            p-6
+            p-4
 
             text-[var(--cf-text)]
 
@@ -642,6 +781,8 @@ export default function DashboardPage() {
 
             transition-colors
             duration-200
+
+            sm:p-6
           "
         >
           <div
@@ -663,6 +804,7 @@ export default function DashboardPage() {
             "
           />
 
+
           <div
             className="
               relative
@@ -674,6 +816,7 @@ export default function DashboardPage() {
                 flex
                 items-center
                 justify-between
+                gap-3
               "
             >
               <div
@@ -681,6 +824,7 @@ export default function DashboardPage() {
                   flex
                   h-10
                   w-10
+                  shrink-0
                   items-center
                   justify-center
 
@@ -696,6 +840,7 @@ export default function DashboardPage() {
                 />
               </div>
 
+
               <span
                 className="
                   rounded-full
@@ -708,39 +853,52 @@ export default function DashboardPage() {
                   px-3
                   py-1.5
 
-                  text-[11px]
+                  text-[10px]
 
                   text-[var(--cf-text-secondary)]
+
+                  sm:text-[11px]
                 "
               >
                 Revenue brief
               </span>
             </div>
 
+
             <h3
               className="
-                mt-6
+                mt-5
 
-                text-[28px]
+                text-[23px]
                 font-semibold
-                leading-9
-                tracking-[-0.6px]
+                leading-[1.28]
+                tracking-[-0.5px]
 
                 text-[var(--cf-text)]
+
+                sm:mt-6
+                sm:text-[28px]
+                sm:leading-9
+                sm:tracking-[-0.6px]
               "
             >
               €19,500 could move forward
               with three actions today.
             </h3>
 
+
             <p
               className="
-                mt-4
+                mt-3
 
-                text-[15px]
-                leading-7
+                text-[13px]
+                leading-6
 
                 text-[var(--cf-text-secondary)]
+
+                sm:mt-4
+                sm:text-[15px]
+                sm:leading-7
               "
             >
               Acme has recent proposal
@@ -749,10 +907,14 @@ export default function DashboardPage() {
               is waiting for your answer.
             </p>
 
+
             <div
               className="
-                mt-6
-                space-y-3
+                mt-5
+                space-y-2.5
+
+                sm:mt-6
+                sm:space-y-3
               "
             >
               <BriefRow
@@ -771,13 +933,14 @@ export default function DashboardPage() {
               />
             </div>
 
+
             <button
               type="button"
               aria-label="Review priorities"
               data-tooltip="Review today's highest-priority opportunities"
               data-tooltip-position="top"
               className="
-                mt-7
+                mt-6
 
                 flex
                 h-11
@@ -790,7 +953,7 @@ export default function DashboardPage() {
 
                 px-4
 
-                text-[14px]
+                text-[13px]
                 font-semibold
 
                 text-[var(--cf-surface)]
@@ -798,6 +961,9 @@ export default function DashboardPage() {
                 transition
 
                 hover:opacity-90
+
+                sm:mt-7
+                sm:text-[14px]
               "
             >
               Review priorities
@@ -841,7 +1007,7 @@ function MetricCard({
 
         bg-[var(--cf-surface)]
 
-        p-5
+        p-4
 
         shadow-[var(--cf-shadow)]
 
@@ -849,6 +1015,8 @@ function MetricCard({
         duration-200
 
         hover:-translate-y-[1px]
+
+        sm:p-5
       "
     >
       <div
@@ -859,40 +1027,52 @@ function MetricCard({
           gap-3
         "
       >
-        <div>
+        <div
+          className="
+            min-w-0
+          "
+        >
           <p
             className="
-              text-[12px]
+              text-[11px]
               font-semibold
               uppercase
               tracking-[0.08em]
 
               text-[var(--cf-text-secondary)]
+
+              sm:text-[12px]
             "
           >
             {label}
           </p>
 
+
           <p
             className="
-              mt-3
+              mt-2.5
 
-              text-[24px]
+              text-[23px]
               font-semibold
               tracking-[-1px]
 
               text-[var(--cf-text)]
+
+              sm:mt-3
+              sm:text-[24px]
             "
           >
             {value}
           </p>
         </div>
 
+
         <div
           className="
             flex
             h-10
             w-10
+            shrink-0
             items-center
             justify-center
 
@@ -909,10 +1089,15 @@ function MetricCard({
         </div>
       </div>
 
+
       <p
         className={`
-          mt-4
-          text-[13px]
+          mt-3
+
+          text-[12px]
+
+          sm:mt-4
+          sm:text-[13px]
 
           ${
             positive
@@ -971,6 +1156,7 @@ function AttentionItem({
           text-[var(--cf-primary)]
         `;
 
+
   return (
     <div
       className={`
@@ -979,15 +1165,20 @@ function AttentionItem({
         grid
         gap-4
 
-        px-6
-        py-6
+        px-4
+        py-5
 
         transition-colors
 
         hover:bg-[var(--cf-surface-hover)]
 
+        sm:px-5
+        sm:py-6
+
         lg:grid-cols-[minmax(0,1fr)_auto]
         lg:items-center
+        lg:gap-4
+        lg:px-6
 
         ${
           !last
@@ -999,18 +1190,26 @@ function AttentionItem({
         }
       `}
     >
+      {/* ===================================================
+          LEAD CONTENT
+      =================================================== */}
+
       <div
         className="
           flex
           min-w-0
-          gap-4
+          gap-3
+
+          sm:gap-4
         "
       >
+        {/* Avatar */}
+
         <div
           className="
             flex
-            h-12
-            w-12
+            h-11
+            w-11
             shrink-0
             items-center
             justify-center
@@ -1022,14 +1221,21 @@ function AttentionItem({
 
             bg-[var(--cf-surface-soft)]
 
-            text-[13px]
+            text-[12px]
             font-semibold
 
             text-[var(--cf-text-secondary)]
+
+            sm:h-12
+            sm:w-12
+            sm:text-[13px]
           "
         >
           {initials}
         </div>
+
+
+        {/* Content */}
 
         <div
           className="
@@ -1043,66 +1249,86 @@ function AttentionItem({
               flex-wrap
               items-center
 
-              gap-x-3
+              gap-x-2.5
               gap-y-1
             "
           >
             <span
               className="
-                text-[16px]
+                text-[14px]
                 font-semibold
 
                 text-[var(--cf-text)]
+
+                sm:text-[16px]
               "
             >
               {company}
             </span>
 
+
             <span
               className="
-                text-[15px]
+                text-[13px]
                 font-semibold
 
                 text-[var(--cf-primary)]
+
+                sm:text-[15px]
               "
             >
               {value}
             </span>
           </div>
 
+
           <div
             className="
               mt-1.5
 
-              text-[20px]
+              text-[17px]
               font-semibold
+              leading-6
 
               text-[var(--cf-text)]
+
+              sm:text-[20px]
             "
           >
             {title}
           </div>
 
+
           <p
             className="
-              mt-2
+              mt-1.5
 
-              text-[14px]
-              leading-6
+              text-[13px]
+              leading-5
 
               text-[var(--cf-text-secondary)]
+
+              sm:mt-2
+              sm:text-[14px]
+              sm:leading-6
             "
           >
             {description}
           </p>
 
+
+          {/* Reason tags */}
+
           <div
             className="
-              mt-4
+              mt-3
 
               flex
               flex-wrap
-              gap-2
+              gap-1.5
+
+              sm:mt-4
+              sm:gap-2
             "
           >
             {reasons.map(
@@ -1117,12 +1343,16 @@ function AttentionItem({
 
                     bg-[var(--cf-surface-soft)]
 
-                    px-3
+                    px-2.5
                     py-1.5
 
-                    text-[11px]
+                    text-[10px]
+                    leading-4
 
                     text-[var(--cf-text-secondary)]
+
+                    sm:px-3
+                    sm:text-[11px]
                   "
                 >
                   {reason}
@@ -1133,15 +1363,22 @@ function AttentionItem({
         </div>
       </div>
 
+
+      {/* ===================================================
+          ACTIONS
+
+          SAME DESIGN:
+          MOBILE / TABLET / DESKTOP
+      =================================================== */}
+
       <div
         className="
           flex
+          flex-wrap
           items-center
           gap-2
 
-          pl-[64px]
-
-          lg:pl-0
+          sm:flex-nowrap
         "
       >
         {/* Main action */}
@@ -1154,6 +1391,7 @@ function AttentionItem({
           className="
             flex
             h-11
+            min-w-0
             items-center
             gap-2
 
@@ -1166,17 +1404,19 @@ function AttentionItem({
 
             px-4
 
-            text-[15px]
+            text-[14px]
             font-medium
 
             text-[var(--cf-text-secondary)]
 
             shadow-[var(--cf-shadow)]
 
-            transition
+            transition-all
 
             hover:bg-[var(--cf-surface-soft)]
             hover:text-[var(--cf-text)]
+
+            active:scale-[0.98]
           "
         >
           <span
@@ -1184,6 +1424,7 @@ function AttentionItem({
               flex
               h-6
               w-6
+              shrink-0
               items-center
               justify-center
 
@@ -1197,12 +1438,24 @@ function AttentionItem({
             />
           </span>
 
-          {action}
+
+          <span
+            className="
+              whitespace-nowrap
+            "
+          >
+            {action}
+          </span>
+
 
           <ArrowRight
             size={12}
+            className="
+              shrink-0
+            "
           />
         </button>
+
 
         {/* More */}
 
@@ -1215,6 +1468,7 @@ function AttentionItem({
             flex
             h-10
             w-10
+            shrink-0
             items-center
             justify-center
 
@@ -1222,10 +1476,12 @@ function AttentionItem({
 
             text-[var(--cf-text-secondary)]
 
-            transition
+            transition-all
 
             hover:bg-[var(--cf-surface-soft)]
             hover:text-[var(--cf-text)]
+
+            active:scale-[0.96]
           "
         >
           <MoreHorizontal
@@ -1263,30 +1519,41 @@ function BriefRow({
 
         bg-[var(--cf-surface-soft)]
 
-        px-4
+        px-3.5
         py-3
 
         transition
 
         hover:bg-[var(--cf-surface-hover)]
+
+        sm:px-4
       "
     >
       <span
         className="
-          text-[11px]
+          shrink-0
+
+          text-[10px]
           font-semibold
 
           text-[var(--cf-primary)]
+
+          sm:text-[11px]
         "
       >
         {number}
       </span>
 
+
       <span
         className="
-          text-[14px]
+          min-w-0
+
+          text-[13px]
 
           text-[var(--cf-text-secondary)]
+
+          sm:text-[14px]
         "
       >
         {text}

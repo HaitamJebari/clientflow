@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 
 import Link from 'next/link';
-
 import {
   usePathname,
   useRouter,
@@ -177,11 +176,13 @@ export function Sidebar({
     logout,
   } = useAuth();
 
+
   const initials = (
     `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}` ||
     user?.email?.[0] ||
     'U'
   ).toUpperCase();
+
 
   const organizationInitials =
     organization?.name
@@ -213,11 +214,13 @@ export function Sidebar({
         reverseButtons: true,
       });
 
+
     if (
       !result.isConfirmed
     ) {
       return;
     }
+
 
     await logout();
 
@@ -235,28 +238,28 @@ export function Sidebar({
 
       <button
         type="button"
-        aria-label="Close sidebar"
+        aria-label="Close navigation"
         onClick={onMobileClose}
         className={`
           fixed
           inset-0
           z-40
 
-          bg-black/40
-          backdrop-blur-[2px]
+          bg-black/45
+
+          backdrop-blur-[3px]
 
           transition-all
           duration-300
 
           lg:hidden
 
-          ${
-            mobileOpen
-              ? `
+          ${mobileOpen
+            ? `
                 pointer-events-auto
                 opacity-100
               `
-              : `
+            : `
                 pointer-events-none
                 opacity-0
               `
@@ -266,44 +269,45 @@ export function Sidebar({
 
 
       {/* ===================================================
-          SIDEBAR CONTAINER
+          SIDEBAR OUTER
       =================================================== */}
 
       <aside
+        aria-label="Main navigation"
         className={`
           fixed
           z-50
 
-          inset-y-0
-          left-0
+          left-3
+          top-3
+          bottom-3
 
-          w-[272px]
+          h-[calc(100dvh-24px)]
+
+          w-[min(320px,calc(100vw-24px))]
 
           transition-[width,transform]
           duration-300
           ease-[cubic-bezier(.22,1,.36,1)]
 
-          ${
-            mobileOpen
-              ? 'translate-x-0'
-              : '-translate-x-full'
+          ${mobileOpen
+            ? 'translate-x-0'
+            : '-translate-x-[110%]'
           }
 
-          lg:bottom-3
-          lg:left-3
-          lg:top-3
-
           lg:h-[calc(100vh-24px)]
-
           lg:translate-x-0
 
-          ${
-            collapsed
-              ? 'lg:w-[70px]'
-              : 'lg:w-[248px]'
+          ${collapsed
+            ? 'lg:w-[70px]'
+            : 'lg:w-[248px]'
           }
         `}
       >
+        {/* =================================================
+            SIDEBAR SURFACE
+        ================================================= */}
+
         <div
           className="
             flex
@@ -313,7 +317,7 @@ export function Sidebar({
 
             overflow-hidden
 
-            rounded-[18px]
+            rounded-[20px]
 
             border
             border-[var(--cf-sidebar-border)]
@@ -322,134 +326,223 @@ export function Sidebar({
 
             text-[var(--cf-sidebar-text)]
 
-            shadow-[var(--cf-shadow)]
+            shadow-[0_24px_70px_rgba(0,0,0,.18)]
           "
         >
           {/* =================================================
-              HEADER
+              MOBILE HEADER
+          ================================================= */}
+
+          <div
+            className="
+              flex
+              h-[72px]
+              shrink-0
+              items-center
+              justify-between
+
+              px-4
+
+              lg:hidden
+            "
+          >
+            <Link
+              href="/dashboard"
+              onClick={onMobileClose}
+              className="
+                flex
+                min-w-0
+                items-center
+                gap-3
+              "
+            >
+              <ClientFlowLogo />
+
+              <div
+                className="
+                  min-w-0
+                "
+              >
+                <p
+                  className="
+                    truncate
+
+                    text-[18px]
+                    font-semibold
+                    tracking-[-0.45px]
+                  "
+                >
+                  ClientFlow
+                </p>
+
+                <p
+                  className="
+                    mt-[1px]
+
+                    truncate
+
+                    text-[10px]
+
+                    text-[var(--cf-sidebar-muted)]
+                  "
+                >
+                  Client acquisition OS
+                </p>
+              </div>
+            </Link>
+
+
+            <button
+              type="button"
+              onClick={onMobileClose}
+              aria-label="Close sidebar"
+              className="
+                flex
+                h-10
+                w-10
+                shrink-0
+                items-center
+                justify-center
+
+                rounded-xl
+
+                text-[var(--cf-sidebar-muted)]
+
+                transition
+
+                hover:bg-[var(--cf-sidebar-hover)]
+                hover:text-[var(--cf-sidebar-text)]
+
+                active:scale-95
+              "
+            >
+              <X
+                size={19}
+                strokeWidth={1.8}
+              />
+            </button>
+          </div>
+
+
+          {/* =================================================
+              DESKTOP HEADER
           ================================================= */}
 
           <div
             className={`
-              flex
+              hidden
               h-[70px]
               shrink-0
               items-center
 
-              px-4
+              lg:flex
 
-              ${
-                collapsed
-                  ? 'lg:justify-center'
-                  : 'lg:justify-between'
+              ${collapsed
+                ? `
+                    justify-center
+                    px-2
+                  `
+                : `
+                    justify-between
+                    px-4
+                  `
               }
             `}
           >
-            {/* ===============================================
-                COLLAPSED LOGO
-                Hover = expand icon + tooltip
-            ================================================ */}
-
             {collapsed ? (
               <SidebarTooltip
                 text="Expand sidebar"
                 enabled
-                align="right"
-                wrapperClassName="
-                  hidden
-                  justify-center
-                  lg:flex
-                "
               >
                 <button
                   type="button"
-                  onClick={
-                    onToggleCollapsed
-                  }
+                  onClick={onToggleCollapsed}
                   aria-label="Expand sidebar"
                   className="
-                    group
-                    relative
+        group
 
-                    flex
-                    h-10
-                    w-10
-                    items-center
-                    justify-center
+        relative
 
-                    rounded-xl
+        flex
+        h-11
+        w-full
+        items-center
+        justify-center
 
-                    transition
+        rounded-xl
 
-                    hover:bg-[var(--cf-sidebar-hover)]
-                  "
+        transition-all
+        duration-150
+
+        hover:bg-[var(--cf-sidebar-hover)]
+
+        active:scale-[0.985]
+      "
                 >
-                  {/* ClientFlow logo */}
+                  {/* ===============================================
+          DEFAULT: CLIENTFLOW PURPLE LOGO
+      =============================================== */}
 
-                  <div
+                  <span
                     className="
-                      absolute
+          absolute
 
-                      flex
-                      h-9
-                      w-9
-                      items-center
-                      justify-center
+          flex
+          h-8
+          w-8
+          items-center
+          justify-center
 
-                      rounded-xl
+          rounded-lg
 
-                      bg-[#5b5bf7]
+          bg-[var(--cf-primary)]
 
-                      text-sm
-                      font-semibold
-                      text-white
+          text-[12px]
+          font-semibold
+          text-white
 
-                      shadow-[0_7px_18px_rgba(91,91,247,.25)]
+          shadow-[0_5px_14px_rgba(91,91,247,.22)]
 
-                      transition-all
-                      duration-150
+          transition-all
+          duration-150
 
-                      group-hover:scale-90
-                      group-hover:opacity-0
-                    "
+          group-hover:scale-90
+          group-hover:opacity-0
+        "
                   >
                     ↗
-                  </div>
+                  </span>
 
-                  {/* Expand icon */}
+
+                  {/* ===============================================
+          HOVER: EXPAND SIDEBAR ICON
+      =============================================== */}
 
                   <PanelLeftOpen
-                    size={19}
+                    size={18}
                     strokeWidth={1.8}
                     className="
-                      absolute
+          absolute
 
-                      scale-90
+          scale-90
 
-                      text-[var(--cf-sidebar-text)]
+          text-[var(--cf-sidebar-text)]
 
-                      opacity-0
+          opacity-0
 
-                      transition-all
-                      duration-150
+          transition-all
+          duration-150
 
-                      group-hover:scale-100
-                      group-hover:opacity-100
-                    "
+          group-hover:scale-100
+          group-hover:opacity-100
+        "
                   />
                 </button>
               </SidebarTooltip>
             ) : (
               <>
-                {/* ===========================================
-                    BRAND
-                ============================================ */}
-
                 <Link
                   href="/dashboard"
-                  onClick={
-                    onMobileClose
-                  }
                   className="
                     flex
                     min-w-0
@@ -457,47 +550,30 @@ export function Sidebar({
                     gap-3
                   "
                 >
-                  <div
-                    className="
-                      flex
-                      h-10
-                      w-10
-                      shrink-0
-                      items-center
-                      justify-center
-
-                      rounded-xl
-
-                      bg-[#5b5bf7]
-
-                      text-sm
-                      font-semibold
-                      text-white
-
-                      shadow-[0_7px_18px_rgba(91,91,247,.25)]
-                    "
-                  >
-                    ↗
-                  </div>
+                  <ClientFlowLogo />
 
                   <div
                     className="
                       min-w-0
                     "
                   >
-                    <div
+                    <p
                       className="
+                        truncate
+
                         text-[18px]
                         font-semibold
                         tracking-[-0.45px]
                       "
                     >
                       ClientFlow
-                    </div>
+                    </p>
 
-                    <div
+                    <p
                       className="
-                        mt-[2px]
+                        mt-[1px]
+
+                        truncate
 
                         text-[10px]
 
@@ -505,14 +581,10 @@ export function Sidebar({
                       "
                     >
                       Client acquisition OS
-                    </div>
+                    </p>
                   </div>
                 </Link>
 
-
-                {/* ===========================================
-                    COLLAPSE BUTTON
-                ============================================ */}
 
                 <button
                   type="button"
@@ -523,15 +595,14 @@ export function Sidebar({
                   data-tooltip="Collapse sidebar"
                   data-tooltip-position="bottom"
                   className="
-                    hidden
-
+                    flex
                     h-9
                     w-9
-
+                    shrink-0
                     items-center
                     justify-center
 
-                    rounded-lg
+                    rounded-xl
 
                     text-[var(--cf-sidebar-muted)]
 
@@ -539,8 +610,6 @@ export function Sidebar({
 
                     hover:bg-[var(--cf-sidebar-hover)]
                     hover:text-[var(--cf-sidebar-text)]
-
-                    lg:flex
                   "
                 >
                   <PanelLeftClose
@@ -550,101 +619,6 @@ export function Sidebar({
                 </button>
               </>
             )}
-
-
-            {/* ===============================================
-                MOBILE BRAND
-            ================================================ */}
-
-            <Link
-              href="/dashboard"
-              onClick={
-                onMobileClose
-              }
-              className="
-                flex
-                min-w-0
-                items-center
-                gap-3
-
-                lg:hidden
-              "
-            >
-              <div
-                className="
-                  flex
-                  h-10
-                  w-10
-                  shrink-0
-                  items-center
-                  justify-center
-
-                  rounded-xl
-
-                  bg-[#5b5bf7]
-
-                  text-sm
-                  font-semibold
-                  text-white
-                "
-              >
-                ↗
-              </div>
-
-              <div>
-                <div
-                  className="
-                    text-[18px]
-                    font-semibold
-                  "
-                >
-                  ClientFlow
-                </div>
-
-                <div
-                  className="
-                    text-[10px]
-
-                    text-[var(--cf-sidebar-muted)]
-                  "
-                >
-                  Client acquisition OS
-                </div>
-              </div>
-            </Link>
-
-
-            {/* ===============================================
-                MOBILE CLOSE
-            ================================================ */}
-
-            <button
-              type="button"
-              onClick={
-                onMobileClose
-              }
-              aria-label="Close sidebar"
-              className="
-                flex
-                h-10
-                w-10
-                items-center
-                justify-center
-
-                rounded-lg
-
-                text-[var(--cf-sidebar-muted)]
-
-                transition
-
-                hover:bg-[var(--cf-sidebar-hover)]
-                hover:text-[var(--cf-sidebar-text)]
-
-                lg:hidden
-              "
-            >
-              <X size={18} />
-            </button>
           </div>
 
 
@@ -664,17 +638,16 @@ export function Sidebar({
 
               bg-[var(--cf-sidebar-elevated)]
 
+              p-2
+
               transition-all
 
-              ${
-                collapsed
-                  ? `
+              ${collapsed
+                ? `
                     lg:mx-2
                     lg:p-1
                   `
-                  : `
-                    p-2
-                  `
+                : ''
               }
             `}
           >
@@ -684,8 +657,6 @@ export function Sidebar({
                 'Workspace'
               }
               enabled={collapsed}
-              align="right"
-              wrapperClassName="w-full"
             >
               <button
                 type="button"
@@ -695,29 +666,31 @@ export function Sidebar({
                 }
                 className={`
                   group
-                  relative
 
                   flex
                   w-full
                   items-center
 
+                  gap-3
+
                   rounded-lg
+
+                  px-2
+                  py-2.5
 
                   transition
 
                   hover:bg-[var(--cf-sidebar-hover)]
 
-                  ${
-                    collapsed
-                      ? `
+                  ${collapsed
+                    ? `
                         lg:h-11
                         lg:justify-center
+                        lg:gap-0
+                        lg:px-0
+                        lg:py-0
                       `
-                      : `
-                        gap-3
-                        px-2
-                        py-2.5
-                      `
+                    : ''
                   }
                 `}
               >
@@ -740,8 +713,11 @@ export function Sidebar({
                     text-[var(--cf-primary)]
                   "
                 >
-                  {organizationInitials}
+                  {
+                    organizationInitials
+                  }
                 </div>
+
 
                 <div
                   className={`
@@ -749,10 +725,9 @@ export function Sidebar({
                     flex-1
                     text-left
 
-                    ${
-                      collapsed
-                        ? 'lg:hidden'
-                        : ''
+                    ${collapsed
+                      ? 'lg:hidden'
+                      : ''
                     }
                   `}
                 >
@@ -762,6 +737,8 @@ export function Sidebar({
 
                       text-[13px]
                       font-semibold
+
+                      text-[var(--cf-sidebar-text)]
                     "
                   >
                     {organization?.name ??
@@ -781,15 +758,17 @@ export function Sidebar({
                   </p>
                 </div>
 
+
                 <ChevronDown
                   size={14}
                   className={`
+                    shrink-0
+
                     text-[var(--cf-sidebar-muted)]
 
-                    ${
-                      collapsed
-                        ? 'lg:hidden'
-                        : ''
+                    ${collapsed
+                      ? 'lg:hidden'
+                      : ''
                     }
                   `}
                 />
@@ -810,13 +789,14 @@ export function Sidebar({
               flex-1
 
               overflow-y-auto
+              overflow-x-hidden
 
-              pb-3
+              px-3
+              pb-4
 
-              ${
-                collapsed
-                  ? 'lg:px-2'
-                  : 'px-3'
+              ${collapsed
+                ? 'lg:px-2'
+                : ''
               }
             `}
           >
@@ -830,43 +810,48 @@ export function Sidebar({
                     group.label ??
                     `main-${index}`
                   }
-                  className={
-                    index > 0
-                      ? collapsed
-                        ? 'mt-2'
-                        : 'mt-5'
+                  className={`
+                    ${index > 0
+                      ? 'mt-5'
                       : ''
-                  }
+                    }
+
+                    ${collapsed &&
+                      index > 0
+                      ? 'lg:mt-2'
+                      : ''
+                    }
+                  `}
                 >
-                  {/* =========================================
-                      SECTION LABEL
-                  ========================================== */}
+                  {/* SECTION LABEL */}
 
-                  {group.label &&
-                    !collapsed && (
-                      <p
-                        className="
-                          mb-2
-                          px-2.5
+                  {group.label && (
+                    <p
+                      className={`
+                        mb-2
+                        px-2.5
 
-                          text-[10px]
-                          font-semibold
-                          uppercase
-                          tracking-[0.16em]
+                        text-[10px]
+                        font-semibold
+                        uppercase
+                        tracking-[0.16em]
 
-                          text-[var(--cf-sidebar-muted)]
-                        "
-                      >
-                        {
-                          group.label
+                        text-[var(--cf-sidebar-muted)]
+
+                        ${collapsed
+                          ? 'lg:hidden'
+                          : ''
                         }
-                      </p>
-                    )}
+                      `}
+                    >
+                      {
+                        group.label
+                      }
+                    </p>
+                  )}
 
 
-                  {/* =========================================
-                      COLLAPSED DIVIDER
-                  ========================================== */}
+                  {/* COLLAPSED DESKTOP DIVIDER */}
 
                   {group.label &&
                     collapsed && (
@@ -886,13 +871,9 @@ export function Sidebar({
                     )}
 
 
-                  {/* =========================================
-                      NAV ITEMS
-                  ========================================== */}
-
                   <div
                     className="
-                      space-y-[4px]
+                      space-y-1
                     "
                   >
                     {group.items.map(
@@ -902,10 +883,11 @@ export function Sidebar({
 
                         const active =
                           pathname ===
-                            item.href ||
+                          item.href ||
                           pathname.startsWith(
                             `${item.href}/`,
                           );
+
 
                         return (
                           <SidebarTooltip
@@ -918,8 +900,6 @@ export function Sidebar({
                             enabled={
                               collapsed
                             }
-                            align="right"
-                            wrapperClassName="w-full"
                           >
                             <Link
                               href={
@@ -933,38 +913,44 @@ export function Sidebar({
                               }
                               className={`
                                 group
+
                                 relative
 
                                 flex
-                                h-[44px]
+                                min-h-[44px]
+                                w-full
                                 items-center
 
+                                gap-3
+
                                 rounded-xl
+
+                                px-3
 
                                 text-[14px]
                                 font-medium
 
-                                transition
+                                transition-all
+                                duration-150
 
-                                ${
-                                  collapsed
-                                    ? `
+                                active:scale-[0.985]
+
+                                ${collapsed
+                                  ? `
                                       lg:justify-center
+                                      lg:gap-0
                                       lg:px-0
                                     `
-                                    : `
-                                      gap-3
-                                      px-3
-                                    `
+                                  : ''
                                 }
 
-                                ${
-                                  active
-                                    ? `
+                                ${active
+                                  ? `
                                       bg-[var(--cf-sidebar-active)]
+
                                       text-[var(--cf-sidebar-text)]
                                     `
-                                    : `
+                                  : `
                                       text-[var(--cf-sidebar-text)]/80
 
                                       hover:bg-[var(--cf-sidebar-hover)]
@@ -973,8 +959,6 @@ export function Sidebar({
                                 }
                               `}
                             >
-                              {/* Active indicator */}
-
                               {active && (
                                 <span
                                   className="
@@ -991,7 +975,6 @@ export function Sidebar({
                                 />
                               )}
 
-                              {/* Icon */}
 
                               <Icon
                                 size={18}
@@ -1000,23 +983,26 @@ export function Sidebar({
                                     ? 2
                                     : 1.8
                                 }
-                                className={
-                                  active
+                                className={`
+                                  shrink-0
+
+                                  ${active
                                     ? 'text-[var(--cf-primary)]'
                                     : ''
-                                }
+                                  }
+                                `}
                               />
 
-                              {/* Label */}
 
                               <span
                                 className={`
+                                  min-w-0
                                   flex-1
+                                  truncate
 
-                                  ${
-                                    collapsed
-                                      ? 'lg:hidden'
-                                      : ''
+                                  ${collapsed
+                                    ? 'lg:hidden'
+                                    : ''
                                   }
                                 `}
                               >
@@ -1026,8 +1012,6 @@ export function Sidebar({
                               </span>
 
 
-                              {/* Badge */}
-
                               {'badge' in
                                 item &&
                                 item.badge && (
@@ -1035,6 +1019,7 @@ export function Sidebar({
                                     className={`
                                       flex
                                       min-w-5
+                                      shrink-0
                                       items-center
                                       justify-center
 
@@ -1049,12 +1034,11 @@ export function Sidebar({
                                       font-semibold
                                       text-white
 
-                                      ${
-                                        collapsed
-                                          ? `
+                                      ${collapsed
+                                        ? `
                                             lg:absolute
-                                            lg:right-[4px]
-                                            lg:top-[4px]
+                                            lg:right-[3px]
+                                            lg:top-[3px]
 
                                             lg:h-[14px]
                                             lg:min-w-[14px]
@@ -1063,7 +1047,7 @@ export function Sidebar({
 
                                             lg:text-[7px]
                                           `
-                                          : ''
+                                        : ''
                                       }
                                     `}
                                   >
@@ -1095,10 +1079,11 @@ export function Sidebar({
               border-t
               border-[var(--cf-sidebar-border)]
 
-              ${
-                collapsed
-                  ? 'lg:p-2'
-                  : 'p-3'
+              p-3
+
+              ${collapsed
+                ? 'lg:p-2'
+                : ''
               }
             `}
           >
@@ -1113,7 +1098,11 @@ export function Sidebar({
                   size={17}
                 />
               }
+              onMobileClose={
+                onMobileClose
+              }
             />
+
 
             <SidebarFooterAction
               collapsed={
@@ -1124,6 +1113,9 @@ export function Sidebar({
                 <CircleHelp
                   size={17}
                 />
+              }
+              onMobileClose={
+                onMobileClose
               }
             />
 
@@ -1139,39 +1131,39 @@ export function Sidebar({
 
 
             {/* ===============================================
-                ACCOUNT
+                USER
             ================================================ */}
 
             <SidebarTooltip
               text="Account & profile"
               enabled={collapsed}
-              align="right"
-              wrapperClassName="w-full"
             >
               <div
                 className={`
                   group
-                  relative
 
                   flex
-                  min-h-11
+                  min-h-[48px]
+                  w-full
                   items-center
 
+                  gap-2.5
+
                   rounded-xl
+
+                  px-2
 
                   transition
 
                   hover:bg-[var(--cf-sidebar-hover)]
 
-                  ${
-                    collapsed
-                      ? `
+                  ${collapsed
+                    ? `
                         lg:justify-center
+                        lg:gap-0
+                        lg:px-0
                       `
-                      : `
-                        gap-2.5
-                        px-2
-                      `
+                    : ''
                   }
                 `}
               >
@@ -1196,15 +1188,15 @@ export function Sidebar({
                   {initials}
                 </div>
 
+
                 <div
                   className={`
                     min-w-0
                     flex-1
 
-                    ${
-                      collapsed
-                        ? 'lg:hidden'
-                        : ''
+                    ${collapsed
+                      ? 'lg:hidden'
+                      : ''
                     }
                   `}
                 >
@@ -1214,16 +1206,20 @@ export function Sidebar({
 
                       text-[12px]
                       font-semibold
+
+                      text-[var(--cf-sidebar-text)]
                     "
                   >
                     {user?.firstName ||
-                    user?.lastName
+                      user?.lastName
                       ? `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim()
                       : user?.email}
                   </p>
 
                   <p
                     className="
+                      mt-[1px]
+
                       truncate
 
                       text-[10px]
@@ -1236,41 +1232,44 @@ export function Sidebar({
                 </div>
 
 
-                {/* ===========================================
-                    SIGN OUT
-                ============================================ */}
+                {/* Always visible on mobile.
+                    Hidden only on collapsed desktop. */}
 
-                {!collapsed && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void handleLogout()
+                <button
+                  type="button"
+                  onClick={() =>
+                    void handleLogout()
+                  }
+                  aria-label="Sign out"
+                  data-tooltip="Sign out"
+                  data-tooltip-position="top"
+                  className={`
+                    flex
+                    h-9
+                    w-9
+                    shrink-0
+                    items-center
+                    justify-center
+
+                    rounded-lg
+
+                    text-[var(--cf-sidebar-muted)]
+
+                    transition
+
+                    hover:bg-red-400/10
+                    hover:text-red-400
+
+                    ${collapsed
+                      ? 'lg:hidden'
+                      : ''
                     }
-                    aria-label="Sign out"
-                    data-tooltip="Sign out"
-                    data-tooltip-position="top"
-                    className="
-                      flex
-                      h-8
-                      w-8
-                      items-center
-                      justify-center
-
-                      rounded-lg
-
-                      text-[var(--cf-sidebar-muted)]
-
-                      transition
-
-                      hover:bg-red-400/10
-                      hover:text-red-400
-                    "
-                  >
-                    <LogOut
-                      size={15}
-                    />
-                  </button>
-                )}
+                  `}
+                >
+                  <LogOut
+                    size={15}
+                  />
+                </button>
               </div>
             </SidebarTooltip>
           </div>
@@ -1282,7 +1281,55 @@ export function Sidebar({
 
 
 /* =========================================================
-   SIDEBAR FOOTER ACTION
+   LOGO
+========================================================= */
+
+function ClientFlowLogo({
+  size = 'normal',
+}: {
+  size?:
+  | 'normal'
+  | 'small';
+}) {
+  return (
+    <div
+      className={`
+        flex
+        shrink-0
+        items-center
+        justify-center
+
+        rounded-xl
+
+        bg-[#5b5bf7]
+
+        font-semibold
+        text-white
+
+        shadow-[0_7px_18px_rgba(91,91,247,.25)]
+
+        ${size === 'small'
+          ? `
+              h-9
+              w-9
+              text-sm
+            `
+          : `
+              h-10
+              w-10
+              text-sm
+            `
+        }
+      `}
+    >
+      ↗
+    </div>
+  );
+}
+
+
+/* =========================================================
+   FOOTER ACTION
 ========================================================= */
 
 function SidebarFooterAction({
@@ -1290,24 +1337,30 @@ function SidebarFooterAction({
   label,
   icon,
   href,
+  onMobileClose,
 }: {
   collapsed: boolean;
   label: string;
   icon: ReactNode;
   href?: string;
+  onMobileClose: () => void;
 }) {
   const classes = `
     group
-    relative
 
     flex
     h-10
     w-full
     items-center
 
+    gap-3
+
     rounded-lg
 
+    px-2.5
+
     text-[13px]
+    font-medium
 
     text-[var(--cf-sidebar-text)]/80
 
@@ -1316,28 +1369,38 @@ function SidebarFooterAction({
     hover:bg-[var(--cf-sidebar-hover)]
     hover:text-[var(--cf-sidebar-text)]
 
-    ${
-      collapsed
-        ? `
+    ${collapsed
+      ? `
           lg:justify-center
+          lg:gap-0
+          lg:px-0
         `
-        : `
-          gap-3
-          px-2.5
-        `
+      : ''
     }
   `;
 
+
   const content = (
     <>
-      {icon}
+      <span
+        className="
+          shrink-0
+        "
+      >
+        {icon}
+      </span>
 
       <span
-        className={
-          collapsed
+        className={`
+          min-w-0
+          flex-1
+          truncate
+
+          ${collapsed
             ? 'lg:hidden'
             : ''
-        }
+          }
+        `}
       >
         {label}
       </span>
@@ -1350,12 +1413,13 @@ function SidebarFooterAction({
       <SidebarTooltip
         text={label}
         enabled={collapsed}
-        align="right"
-        wrapperClassName="w-full"
       >
         <Link
           href={href}
           aria-label={label}
+          onClick={
+            onMobileClose
+          }
           className={classes}
         >
           {content}
@@ -1369,8 +1433,6 @@ function SidebarFooterAction({
     <SidebarTooltip
       text={label}
       enabled={collapsed}
-      align="right"
-      wrapperClassName="w-full"
     >
       <button
         type="button"
@@ -1385,39 +1447,23 @@ function SidebarFooterAction({
 
 
 /* =========================================================
-   PORTAL TOOLTIP
-
-   This is intentionally rendered into document.body.
-
-   Why?
-   The sidebar navigation scrolls vertically.
-   Normal absolute tooltips can get clipped by:
-   overflow-y-auto / overflow-hidden.
-
-   Portal rendering prevents that.
+   SIDEBAR PORTAL TOOLTIP
 ========================================================= */
 
 function SidebarTooltip({
   text,
   enabled,
   children,
-  align = 'right',
-  wrapperClassName = '',
 }: {
   text: string;
   enabled: boolean;
   children: ReactNode;
-
-  align?:
-    | 'right'
-    | 'left';
-
-  wrapperClassName?: string;
 }) {
   const anchorRef =
     useRef<HTMLDivElement>(
       null,
     );
+
 
   const [
     position,
@@ -1436,10 +1482,21 @@ function SidebarTooltip({
       return;
     }
 
+
+    const canHover =
+      window.matchMedia(
+        '(hover: hover) and (pointer: fine)',
+      ).matches;
+
+
+    if (!canHover) {
+      return;
+    }
+
+
     const rect =
       anchorRef.current.getBoundingClientRect();
 
-    const gap = 12;
 
     setPosition({
       top:
@@ -1447,9 +1504,7 @@ function SidebarTooltip({
         rect.height / 2,
 
       left:
-        align === 'right'
-          ? rect.right + gap
-          : rect.left - gap,
+        rect.right + 12,
     });
   }
 
@@ -1462,89 +1517,74 @@ function SidebarTooltip({
   return (
     <div
       ref={anchorRef}
-
       onMouseEnter={
         showTooltip
       }
-
       onMouseLeave={
         hideTooltip
       }
-
-      onFocusCapture={
-        showTooltip
-      }
-
-      onBlurCapture={
+      onPointerDown={
         hideTooltip
       }
-
-      className={`
+      className="
         relative
-        ${wrapperClassName}
-      `}
+        w-full
+      "
     >
       {children}
 
+
       {enabled &&
-  position &&
-  createPortal(
-    <div
-      role="tooltip"
-      style={{
-        top: position.top,
-        left: position.left,
-      }}
-      className={`
-        pointer-events-none
-        fixed
-        z-[9999]
+        position &&
+        createPortal(
+          <div
+            role="tooltip"
+            style={{
+              top:
+                position.top,
 
-        -translate-y-1/2
+              left:
+                position.left,
+            }}
+            className="
+              pointer-events-none
 
-        ${
-          align === 'left'
-            ? '-translate-x-full'
-            : ''
-        }
-      `}
-    >
-      <div
-        className={`
-          cf-sidebar-tooltip-content
+              fixed
+              z-[9999]
 
-          whitespace-nowrap
+              -translate-y-1/2
+            "
+          >
+            <div
+              className="
+                cf-sidebar-tooltip-content
 
-          rounded-lg
+                whitespace-nowrap
 
-          border
-          border-[var(--cf-border)]
+                rounded-lg
 
-          bg-[var(--cf-text)]
+                border
+                border-[var(--cf-border)]
 
-          px-2.5
-          py-1.5
+                bg-[var(--cf-text)]
 
-          text-[11px]
-          font-medium
+                px-2.5
+                py-1.5
 
-          text-[var(--cf-surface)]
+                text-[11px]
+                font-medium
 
-          shadow-[0_8px_30px_rgba(0,0,0,.16)]
+                text-[var(--cf-surface)]
 
-          ${
-            align === 'left'
-              ? 'cf-sidebar-tooltip-content-left'
-              : ''
-          }
-        `}
-      >
-        {text}
-      </div>
-    </div>,
+                shadow-[0_8px_30px_rgba(0,0,0,.16)]
+              "
+            >
+              {text}
+            </div>
+          </div>,
 
-    document.body,
-  )}
+          document.body,
+        )}
     </div>
   );
 }
