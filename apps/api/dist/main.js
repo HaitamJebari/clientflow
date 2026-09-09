@@ -21,9 +21,9 @@ async function bootstrap() {
         credentials: true,
     });
     app.enableShutdownHooks();
-    const port = process.env.PORT ?? 4000;
-    await app.listen(port);
-    console.log(`ClientFlow API running on http://localhost:${port}/api/v1`);
+    const port = process.env.PORT || 4000;
+    await app.listen(port, '0.0.0.0');
+    console.log(`Clientflow API running on port ${port}`);
 }
 bootstrap();
 //# sourceMappingURL=main.js.map
