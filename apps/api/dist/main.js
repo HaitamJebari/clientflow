@@ -16,14 +16,18 @@ async function bootstrap() {
         forbidNonWhitelisted: true,
         transform: true,
     }));
+    const allowedOrigins = [
+        'http://localhost:3000',
+        process.env.FRONTEND_URL,
+    ].filter((origin) => Boolean(origin));
     app.enableCors({
-        origin: 'http://localhost:3000',
+        origin: allowedOrigins,
         credentials: true,
     });
     app.enableShutdownHooks();
     const port = process.env.PORT || 4000;
     await app.listen(port, '0.0.0.0');
-    console.log(`Clientflow API running on port ${port}`);
+    console.log(`ClientFlow API running on port ${port}`);
 }
 bootstrap();
 //# sourceMappingURL=main.js.map
