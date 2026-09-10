@@ -30,10 +30,12 @@ export class PrismaService
   }
 
   async onModuleInit(): Promise<void> {
-    await this.$connect();
-  }
+  // Prisma connects lazily when a query is executed.
+      // await this.$connect();
+}
 
-  async onModuleDestroy(): Promise<void> {
-    await this.$disconnect();
-  }
+async onModuleDestroy(): Promise<void> {
+  await this.$disconnect();
+}
+
 }
