@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "node ./node_modules/@nestjs/cli/bin/nest.js build",
+    "build": "prisma generate && tsc -p tsconfig.build.json",
     "deploy": "nest deploy",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
