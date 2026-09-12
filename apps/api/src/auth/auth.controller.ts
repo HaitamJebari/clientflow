@@ -181,47 +181,53 @@ export class AuthController {
     );
   }
 
-  private setRefreshTokenCookie(
-    response: Response,
-    refreshToken: string,
-  ): void {
-    response.cookie(
-      'refresh_token',
-      refreshToken,
-      {
-        httpOnly: true,
+private setRefreshTokenCookie(
+  response: Response,
+  refreshToken: string,
+): void {
+  const isProduction =
+    process.env.NODE_ENV === 'production';
 
-        secure:
-          process.env.NODE_ENV ===
-          'production',
+  response.cookie(
+    'refresh_token',
+    refreshToken,
+    {
+      httpOnly: true,
 
-        sameSite: 'lax',
+      secure: isProduction,
 
-        path: '/api/v1/auth',
+      sameSite: isProduction
+        ? 'none'
+        : 'lax',
 
-        maxAge:
-          this.refreshTokenExpiresIn *
-          1000,
-      },
-    );
-  }
+      path: '/api/v1/auth',
 
-  private clearRefreshTokenCookie(
-    response: Response,
-  ): void {
-    response.clearCookie(
-      'refresh_token',
-      {
-        httpOnly: true,
+      maxAge:
+        this.refreshTokenExpiresIn *
+        1000,
+    },
+  );
+}
 
-        secure:
-          process.env.NODE_ENV ===
-          'production',
+private clearRefreshTokenCookie(
+  response: Response,
+): void {
+  const isProduction =
+    process.env.NODE_ENV === 'production';
 
-        sameSite: 'lax',
+  response.clearCookie(
+    'refresh_token',
+    {
+      httpOnly: true,
 
-        path: '/api/v1/auth',
-      },
-    );
-  }
+      secure: isProduction,
+
+      sameSite: isProduction
+        ? 'none'
+        : 'lax',
+
+      path: '/api/v1/auth',
+    },
+  );
+}
 }
