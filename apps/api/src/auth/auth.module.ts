@@ -15,6 +15,7 @@ import { RolesGuard } from './guards/roles.guard';
 
 @Module({
   imports: [
+    PassportModule,
     PassportModule.register({
       defaultStrategy: 'jwt',
       session: false,

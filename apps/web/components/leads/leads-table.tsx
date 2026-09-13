@@ -29,9 +29,12 @@ export interface Lead {
 
   stage:
     | 'New'
+    | 'Contacted'
     | 'Qualified'
     | 'Proposal'
-    | 'Negotiation';
+    | 'Negotiation'
+    | 'Won'
+    | 'Lost';
 
   temperature:
     | 'Hot'
