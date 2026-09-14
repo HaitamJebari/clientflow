@@ -31,6 +31,7 @@ import {
 } from 'react-dom';
 
 import {
+  useEffect,
   useRef,
   useState,
 } from 'react';
@@ -189,6 +190,128 @@ export function Sidebar({
       ?.slice(0, 2)
       .toUpperCase() ??
     'CF';
+
+
+  /* =======================================================
+     SIDEBAR NAVIGATION SCROLLBAR
+  ======================================================= */
+
+  const navigationScrollRef =
+    useRef<HTMLElement | null>(
+      null,
+    );
+
+  const [
+    navigationScrollbar,
+    setNavigationScrollbar,
+  ] = useState({
+    thumbHeight: 48,
+    thumbTop: 0,
+    canScroll: false,
+  });
+
+  function syncNavigationScrollbar() {
+    const element =
+      navigationScrollRef.current;
+
+    if (!element) {
+      return;
+    }
+
+    const {
+      clientHeight,
+      scrollHeight,
+      scrollTop,
+    } = element;
+
+    if (clientHeight <= 0) {
+      return;
+    }
+
+    const canScroll =
+      scrollHeight > clientHeight + 1;
+
+    /*
+     * Keep a visible desktop thumb even when the current
+     * viewport is tall enough that no scrolling is needed.
+     * When content overflows, the thumb becomes proportional
+     * and follows the real scroll position.
+     */
+    const thumbHeight =
+      canScroll
+        ? Math.max(
+            42,
+            (clientHeight /
+              scrollHeight) *
+              clientHeight,
+          )
+        : Math.min(
+            clientHeight,
+            64,
+          );
+
+    const maxThumbTop =
+      Math.max(
+        0,
+        clientHeight -
+          thumbHeight,
+      );
+
+    const maxScrollTop =
+      Math.max(
+        0,
+        scrollHeight -
+          clientHeight,
+      );
+
+    const thumbTop =
+      canScroll &&
+      maxScrollTop > 0
+        ? (scrollTop /
+            maxScrollTop) *
+          maxThumbTop
+        : 8;
+
+    setNavigationScrollbar({
+      thumbHeight,
+      thumbTop,
+      canScroll,
+    });
+  }
+
+  useEffect(() => {
+    const element =
+      navigationScrollRef.current;
+
+    if (!element) {
+      return;
+    }
+
+    syncNavigationScrollbar();
+
+    const resizeObserver =
+      new ResizeObserver(() => {
+        syncNavigationScrollbar();
+      });
+
+    resizeObserver.observe(
+      element,
+    );
+
+    window.addEventListener(
+      'resize',
+      syncNavigationScrollbar,
+    );
+
+    return () => {
+      resizeObserver.disconnect();
+
+      window.removeEventListener(
+        'resize',
+        syncNavigationScrollbar,
+      );
+    };
+  }, [collapsed]);
 
 
   /* =======================================================
@@ -781,25 +904,40 @@ export function Sidebar({
               NAVIGATION
           ================================================= */}
 
-          <nav
-            className={`
-              cf-sidebar-scroll
-
+          <div
+            className="
+              relative
               min-h-0
               flex-1
-
-              overflow-y-auto
-              overflow-x-hidden
-
-              px-3
-              pb-4
-
-              ${collapsed
-                ? 'lg:px-2'
-                : ''
-              }
-            `}
+            "
           >
+            <nav
+              ref={navigationScrollRef}
+              onScroll={
+                syncNavigationScrollbar
+              }
+              className={`
+                cf-sidebar-scroll
+
+                h-full
+                min-h-0
+
+                overflow-y-auto
+                overflow-x-hidden
+
+                px-3
+                pb-4
+                pr-4
+
+                [scrollbar-width:none]
+                [&::-webkit-scrollbar]:hidden
+
+                ${collapsed
+                  ? 'lg:px-2 lg:pr-3'
+                  : ''
+                }
+              `}
+            >
             {navigation.map(
               (
                 group,
@@ -1065,7 +1203,57 @@ export function Sidebar({
                 </div>
               ),
             )}
-          </nav>
+            </nav>
+
+            {/* Always-visible desktop scrollbar */}
+
+            <div
+              aria-hidden="true"
+              className="
+                pointer-events-none
+
+                absolute
+                bottom-3
+                right-[5px]
+                top-1
+
+                hidden
+                w-[6px]
+
+                rounded-full
+
+                bg-[var(--cf-sidebar-border)]/45
+
+                lg:block
+              "
+            >
+              <div
+                style={{
+                  height:
+                    navigationScrollbar.thumbHeight,
+                  transform: `translateY(${navigationScrollbar.thumbTop}px)`,
+                }}
+                className={`
+                  absolute
+                  left-0
+                  top-0
+
+                  w-[6px]
+
+                  rounded-full
+
+                  transition-[height,transform,background-color]
+                  duration-150
+
+                  ${
+                    navigationScrollbar.canScroll
+                      ? 'bg-[var(--cf-sidebar-muted)]'
+                      : 'bg-[var(--cf-sidebar-muted)]/65'
+                  }
+                `}
+              />
+            </div>
+          </div>
 
 
           {/* =================================================
@@ -1348,26 +1536,33 @@ function SidebarFooterAction({
   const classes = `
     group
 
+    relative
+
     flex
-    h-10
+    min-h-[44px]
     w-full
     items-center
+    justify-start
 
     gap-3
 
-    rounded-lg
+    rounded-xl
 
-    px-2.5
+    px-3
 
-    text-[13px]
+    text-left
+    text-[14px]
     font-medium
 
     text-[var(--cf-sidebar-text)]/80
 
-    transition
+    transition-all
+    duration-150
 
     hover:bg-[var(--cf-sidebar-hover)]
     hover:text-[var(--cf-sidebar-text)]
+
+    active:scale-[0.985]
 
     ${collapsed
       ? `
@@ -1395,6 +1590,7 @@ function SidebarFooterAction({
           min-w-0
           flex-1
           truncate
+          text-left
 
           ${collapsed
             ? 'lg:hidden'
@@ -1437,7 +1633,13 @@ function SidebarFooterAction({
       <button
         type="button"
         aria-label={label}
+        onClick={
+          onMobileClose
+        }
         className={classes}
+        style={{
+          textAlign: 'left',
+        }}
       >
         {content}
       </button>

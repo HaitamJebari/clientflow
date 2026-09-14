@@ -8,6 +8,7 @@ import {
   Pencil,
   Sparkles,
   Trash2,
+  X,
 } from 'lucide-react';
 
 import {
@@ -15,6 +16,10 @@ import {
   useRef,
   useState,
 } from 'react';
+
+import {
+  createPortal,
+} from 'react-dom';
 
 import type {
   Lead,
@@ -482,6 +487,10 @@ function TemperatureBadge({
 
 /* =========================================================
    LEAD ACTIONS MENU
+   - Mobile: bottom action sheet
+   - Tablet/Desktop: anchored dropdown
+   - Rendered through a portal so it is never clipped by
+     table/card overflow containers.
 ========================================================= */
 
 function LeadActionsMenu({
@@ -498,14 +507,19 @@ function LeadActionsMenu({
       null,
     );
 
-  const menuRef =
-    useRef<HTMLDivElement | null>(
-      null,
-    );
-
   const [
     isOpen,
     setIsOpen,
+  ] = useState(false);
+
+  const [
+    isMounted,
+    setIsMounted,
+  ] = useState(false);
+
+  const [
+    isMobile,
+    setIsMobile,
   ] = useState(false);
 
   const [
@@ -516,7 +530,36 @@ function LeadActionsMenu({
     left: 0,
   });
 
-  const openMenu = () => {
+  useEffect(() => {
+    setIsMounted(true);
+
+    const media =
+      window.matchMedia(
+        '(max-width: 767px)',
+      );
+
+    const syncMobile = () => {
+      setIsMobile(
+        media.matches,
+      );
+    };
+
+    syncMobile();
+
+    media.addEventListener(
+      'change',
+      syncMobile,
+    );
+
+    return () => {
+      media.removeEventListener(
+        'change',
+        syncMobile,
+      );
+    };
+  }, []);
+
+  const updatePosition = () => {
     const rect =
       buttonRef.current?.getBoundingClientRect();
 
@@ -524,38 +567,53 @@ function LeadActionsMenu({
       return;
     }
 
-    const width = 190;
-    const estimatedHeight = 112;
+    const menuWidth = 210;
+    const menuHeight = 112;
+    const viewportPadding = 12;
+    const gap = 8;
 
-    const left = Math.min(
-      window.innerWidth - width - 12,
-      Math.max(
-        12,
-        rect.right - width,
-      ),
-    );
+    const left =
+      Math.min(
+        window.innerWidth -
+          menuWidth -
+          viewportPadding,
+        Math.max(
+          viewportPadding,
+          rect.right -
+            menuWidth,
+        ),
+      );
 
-    const shouldOpenAbove =
+    const canOpenBelow =
       rect.bottom +
-        estimatedHeight +
-        12 >
+        gap +
+        menuHeight +
+        viewportPadding <=
       window.innerHeight;
 
-    const top = shouldOpenAbove
-      ? Math.max(
-          12,
-          rect.top -
-            estimatedHeight -
-            8,
-        )
-      : rect.bottom + 8;
+    const top =
+      canOpenBelow
+        ? rect.bottom + gap
+        : Math.max(
+            viewportPadding,
+            rect.top -
+              menuHeight -
+              gap,
+          );
 
     setPosition({
       top,
       left,
     });
+  };
 
+  const openMenu = () => {
+    updatePosition();
     setIsOpen(true);
+  };
+
+  const closeMenu = () => {
+    setIsOpen(false);
   };
 
   useEffect(() => {
@@ -563,184 +621,410 @@ function LeadActionsMenu({
       return;
     }
 
-    const handlePointerDown = (
-      event: MouseEvent,
+    const handleKeyDown = (
+      event: KeyboardEvent,
     ) => {
-      const target =
-        event.target as Node;
-
       if (
-        menuRef.current?.contains(
-          target,
-        ) ||
-        buttonRef.current?.contains(
-          target,
-        )
+        event.key === 'Escape'
       ) {
-        return;
+        closeMenu();
       }
-
-      setIsOpen(false);
     };
 
-    const closeMenu = () => {
-      setIsOpen(false);
-    };
+    const handleViewportChange =
+      () => {
+        if (!isMobile) {
+          updatePosition();
+        }
+      };
 
-    document.addEventListener(
-      'mousedown',
-      handlePointerDown,
+    window.addEventListener(
+      'keydown',
+      handleKeyDown,
     );
 
     window.addEventListener(
       'resize',
-      closeMenu,
+      handleViewportChange,
     );
 
     window.addEventListener(
       'scroll',
-      closeMenu,
+      handleViewportChange,
       true,
     );
 
+    if (isMobile) {
+      const previousOverflow =
+        document.body.style
+          .overflow;
+
+      document.body.style.overflow =
+        'hidden';
+
+      return () => {
+        document.body.style.overflow =
+          previousOverflow;
+
+        window.removeEventListener(
+          'keydown',
+          handleKeyDown,
+        );
+
+        window.removeEventListener(
+          'resize',
+          handleViewportChange,
+        );
+
+        window.removeEventListener(
+          'scroll',
+          handleViewportChange,
+          true,
+        );
+      };
+    }
+
     return () => {
-      document.removeEventListener(
-        'mousedown',
-        handlePointerDown,
+      window.removeEventListener(
+        'keydown',
+        handleKeyDown,
       );
 
       window.removeEventListener(
         'resize',
-        closeMenu,
+        handleViewportChange,
       );
 
       window.removeEventListener(
         'scroll',
-        closeMenu,
+        handleViewportChange,
         true,
       );
     };
-  }, [isOpen]);
+  }, [
+    isOpen,
+    isMobile,
+  ]);
 
   return (
     <>
       <button
         ref={buttonRef}
         type="button"
-        aria-label={`More options for ${lead.company}`}
+        aria-haspopup="menu"
         aria-expanded={isOpen}
+        aria-label={`More options for ${lead.company}`}
         onClick={() => {
           if (isOpen) {
-            setIsOpen(false);
+            closeMenu();
           } else {
             openMenu();
           }
         }}
         className="
           flex
-          h-9
-          w-9
+          h-10
+          w-10
           shrink-0
           items-center
           justify-center
-          rounded-lg
+          rounded-xl
           text-[var(--cf-text-muted)]
           transition
           hover:bg-[var(--cf-surface-soft)]
           hover:text-[var(--cf-text)]
+          focus-visible:outline-none
+          focus-visible:ring-2
+          focus-visible:ring-[var(--cf-primary)]
+          focus-visible:ring-offset-2
+          active:scale-[0.96]
         "
       >
         <MoreHorizontal
-          size={17}
+          size={18}
         />
       </button>
 
-      {isOpen && (
-        <div
-          ref={menuRef}
-          role="menu"
-          style={{
-            top: position.top,
-            left: position.left,
-          }}
-          className="
-            fixed
-            z-[180]
-            w-[190px]
-            overflow-hidden
-            rounded-xl
-            border
-            border-[var(--cf-border)]
-            bg-[var(--cf-surface)]
-            p-1.5
-            shadow-[0_18px_45px_rgba(15,23,42,.20)]
-          "
-        >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setIsOpen(false);
-              onEdit(lead);
-            }}
-            className="
-              flex
-              w-full
-              items-center
-              gap-2.5
-              rounded-lg
-              px-3
-              py-2.5
-              text-left
-              text-[13px]
-              font-medium
-              text-[var(--cf-text)]
-              transition
-              hover:bg-[var(--cf-surface-soft)]
-            "
-          >
-            <Pencil
-              size={15}
-              className="
-                text-[var(--cf-text-secondary)]
-              "
+      {isMounted &&
+        isOpen &&
+        createPortal(
+          <>
+            {/* Outside click layer */}
+
+            <button
+              type="button"
+              aria-label="Close lead actions"
+              onClick={
+                closeMenu
+              }
+              className={`
+                fixed
+                inset-0
+                z-[190]
+
+                ${
+                  isMobile
+                    ? `
+                        bg-slate-950/35
+                        backdrop-blur-[2px]
+                      `
+                    : `
+                        bg-transparent
+                      `
+                }
+              `}
             />
 
-            Edit lead
-          </button>
+            {/* Menu / mobile action sheet */}
 
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setIsOpen(false);
-              onDelete(lead);
-            }}
-            className="
-              mt-1
-              flex
-              w-full
-              items-center
-              gap-2.5
-              rounded-lg
-              px-3
-              py-2.5
-              text-left
-              text-[13px]
-              font-medium
-              text-red-600
-              transition
-              hover:bg-red-500/10
-            "
-          >
-            <Trash2
-              size={15}
-            />
+            <div
+              role="menu"
+              aria-label={`Actions for ${lead.firstName} ${lead.lastName}`}
+              style={
+                isMobile
+                  ? undefined
+                  : {
+                      top:
+                        position.top,
+                      left:
+                        position.left,
+                    }
+              }
+              className={`
+                fixed
+                z-[200]
 
-            Delete lead
-          </button>
-        </div>
-      )}
+                border
+                border-[var(--cf-border)]
+
+                bg-[var(--cf-surface)]
+
+                shadow-[0_24px_65px_rgba(15,23,42,.24)]
+
+                ${
+                  isMobile
+                    ? `
+                        bottom-3
+                        left-3
+                        right-3
+
+                        rounded-[20px]
+
+                        p-3
+                      `
+                    : `
+                        w-[210px]
+
+                        rounded-xl
+
+                        p-1.5
+                      `
+                }
+              `}
+            >
+              {/* Mobile header */}
+
+              {isMobile && (
+                <div
+                  className="
+                    mb-2
+                    flex
+                    items-center
+                    justify-between
+                    gap-3
+
+                    border-b
+                    border-[var(--cf-border-soft)]
+
+                    px-2
+                    pb-3
+                  "
+                >
+                  <div
+                    className="
+                      min-w-0
+                    "
+                  >
+                    <p
+                      className="
+                        truncate
+                        text-[14px]
+                        font-semibold
+                        text-[var(--cf-text)]
+                      "
+                    >
+                      {lead.firstName}{' '}
+                      {lead.lastName}
+                    </p>
+
+                    <p
+                      className="
+                        mt-0.5
+                        truncate
+                        text-[12px]
+                        text-[var(--cf-text-secondary)]
+                      "
+                    >
+                      {lead.company}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={
+                      closeMenu
+                    }
+                    aria-label="Close"
+                    className="
+                      flex
+                      h-9
+                      w-9
+                      shrink-0
+                      items-center
+                      justify-center
+                      rounded-xl
+                      bg-[var(--cf-surface-soft)]
+                      text-[var(--cf-text-secondary)]
+                      transition
+                      hover:text-[var(--cf-text)]
+                    "
+                  >
+                    <X
+                      size={17}
+                    />
+                  </button>
+                </div>
+              )}
+
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  closeMenu();
+                  onEdit(lead);
+                }}
+                className={`
+                  flex
+                  w-full
+                  items-center
+                  gap-3
+
+                  rounded-xl
+
+                  text-left
+                  font-medium
+                  text-[var(--cf-text)]
+
+                  transition
+
+                  hover:bg-[var(--cf-surface-soft)]
+
+                  ${
+                    isMobile
+                      ? `
+                          min-h-12
+                          px-3.5
+                          py-3
+                          text-[15px]
+                        `
+                      : `
+                          px-3
+                          py-2.5
+                          text-[13px]
+                        `
+                  }
+                `}
+              >
+                <span
+                  className="
+                    flex
+                    h-8
+                    w-8
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-lg
+                    bg-[var(--cf-primary-soft)]
+                    text-[var(--cf-primary)]
+                  "
+                >
+                  <Pencil
+                    size={15}
+                  />
+                </span>
+
+                <span>
+                  Edit lead
+                </span>
+              </button>
+
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  closeMenu();
+                  onDelete(lead);
+                }}
+                className={`
+                  mt-1
+
+                  flex
+                  w-full
+                  items-center
+                  gap-3
+
+                  rounded-xl
+
+                  text-left
+                  font-medium
+                  text-red-600
+
+                  transition
+
+                  hover:bg-red-500/10
+
+                  ${
+                    isMobile
+                      ? `
+                          min-h-12
+                          px-3.5
+                          py-3
+                          text-[15px]
+                        `
+                      : `
+                          px-3
+                          py-2.5
+                          text-[13px]
+                        `
+                  }
+                `}
+              >
+                <span
+                  className="
+                    flex
+                    h-8
+                    w-8
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-lg
+                    bg-red-500/10
+                    text-red-600
+                  "
+                >
+                  <Trash2
+                    size={15}
+                  />
+                </span>
+
+                <span>
+                  Delete lead
+                </span>
+              </button>
+            </div>
+          </>,
+          document.body,
+        )}
     </>
   );
 }
