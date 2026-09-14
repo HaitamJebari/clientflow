@@ -2,6 +2,8 @@
 
 import {
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
   Sparkles,
   UsersRound,
   X,
@@ -10,7 +12,6 @@ import {
 import {
   useCallback,
   useEffect,
-  useMemo,
   useState,
 } from 'react';
 
@@ -82,9 +83,27 @@ interface LeadApiItem {
   updatedAt?: string | null;
 }
 
+interface LeadsListMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}
+
+interface LeadsSummary {
+  activeCount: number;
+  attentionCount: number;
+  potentialValueCents: number;
+  currency: string;
+}
+
 interface LeadsListResponse {
   leads?: LeadApiItem[];
   data?: LeadApiItem[];
+  meta?: LeadsListMeta;
+  summary?: LeadsSummary;
 }
 
 type LeadMutationResponse =
@@ -161,6 +180,24 @@ const initialLeadForm: LeadFormState =
 
     notes: '',
   };
+
+const LEADS_PAGE_SIZE = 20;
+
+const initialPagination: LeadsListMeta = {
+  page: 1,
+  pageSize: LEADS_PAGE_SIZE,
+  total: 0,
+  totalPages: 1,
+  hasPreviousPage: false,
+  hasNextPage: false,
+};
+
+const initialSummary: LeadsSummary = {
+  activeCount: 0,
+  attentionCount: 0,
+  potentialValueCents: 0,
+  currency: 'EUR',
+};
 
 /* =========================================================
    HELPERS
@@ -660,35 +697,6 @@ function extractLeads(
   return [];
 }
 
-function extractMutatedLead(
-  payload:
-    LeadMutationResponse,
-): LeadApiItem | null {
-  if (
-    'id' in payload &&
-    typeof payload.id ===
-      'string'
-  ) {
-    return payload;
-  }
-
-  if (
-    'lead' in payload &&
-    payload.lead
-  ) {
-    return payload.lead;
-  }
-
-  if (
-    'data' in payload &&
-    payload.data
-  ) {
-    return payload.data;
-  }
-
-  return null;
-}
-
 function leadToForm(
   lead: Lead,
 ): LeadFormState {
@@ -889,6 +897,34 @@ export default function LeadsPage() {
     );
 
   const [
+    debouncedSearch,
+    setDebouncedSearch,
+  ] =
+    useState('');
+
+  const [
+    page,
+    setPage,
+  ] =
+    useState(1);
+
+  const [
+    pagination,
+    setPagination,
+  ] =
+    useState<LeadsListMeta>(
+      initialPagination,
+    );
+
+  const [
+    summary,
+    setSummary,
+  ] =
+    useState<LeadsSummary>(
+      initialSummary,
+    );
+
+  const [
     isLoading,
     setIsLoading,
   ] =
@@ -1003,8 +1039,26 @@ export default function LeadsPage() {
     useState(false);
 
   /* =======================================================
-     LOAD
+     SERVER-SIDE QUERY
   ======================================================= */
+
+  useEffect(() => {
+    const timeout =
+      window.setTimeout(
+        () => {
+          setDebouncedSearch(
+            search.trim(),
+          );
+        },
+        350,
+      );
+
+    return () => {
+      window.clearTimeout(
+        timeout,
+      );
+    };
+  }, [search]);
 
   const loadLeads =
     useCallback(
@@ -1013,12 +1067,34 @@ export default function LeadsPage() {
         setPageError(null);
 
         try {
+          const params =
+            new URLSearchParams({
+              page:
+                String(page),
+
+              pageSize:
+                String(
+                  LEADS_PAGE_SIZE,
+                ),
+
+              filter,
+
+              sort,
+            });
+
+          if (debouncedSearch) {
+            params.set(
+              'search',
+              debouncedSearch,
+            );
+          }
+
           const response =
             await request<
               | LeadsListResponse
               | LeadApiItem[]
             >(
-              '/leads',
+              `/leads?${params.toString()}`,
             );
 
           const items =
@@ -1026,11 +1102,84 @@ export default function LeadsPage() {
               response,
             );
 
-          setLeads(
+          const mappedLeads =
             items.map(
               mapLeadToUi,
-            ),
+            );
+
+          setLeads(
+            mappedLeads,
           );
+
+          if (
+            !Array.isArray(
+              response,
+            ) &&
+            response.meta
+          ) {
+            setPagination(
+              response.meta,
+            );
+          } else {
+            setPagination({
+              page: 1,
+              pageSize:
+                LEADS_PAGE_SIZE,
+              total:
+                mappedLeads.length,
+              totalPages: 1,
+              hasPreviousPage:
+                false,
+              hasNextPage:
+                false,
+            });
+          }
+
+          if (
+            !Array.isArray(
+              response,
+            ) &&
+            response.summary
+          ) {
+            setSummary(
+              response.summary,
+            );
+          } else {
+            const activeLeads =
+              mappedLeads.filter(
+                (lead) =>
+                  lead.stage !==
+                    'Won' &&
+                  lead.stage !==
+                    'Lost',
+              );
+
+            setSummary({
+              activeCount:
+                activeLeads.length,
+
+              attentionCount:
+                activeLeads.filter(
+                  (lead) =>
+                    lead.needsAttention,
+                ).length,
+
+              potentialValueCents:
+                activeLeads.reduce(
+                  (
+                    total,
+                    lead,
+                  ) =>
+                    total +
+                    lead.value *
+                      100,
+                  0,
+                ),
+
+              currency:
+                'EUR',
+            });
+          }
         } catch (error) {
           if (
             error instanceof
@@ -1050,7 +1199,13 @@ export default function LeadsPage() {
           );
         }
       },
-      [request],
+      [
+        request,
+        debouncedSearch,
+        filter,
+        sort,
+        page,
+      ],
     );
 
   useEffect(() => {
@@ -1113,144 +1268,36 @@ export default function LeadsPage() {
   }, [hasOpenModal]);
 
   /* =======================================================
-     FILTER + SEARCH + SORT
+     SEARCH / FILTER / SORT HANDLERS
   ======================================================= */
 
-  const filteredLeads =
-    useMemo(() => {
-      const normalizedSearch =
-        search
-          .trim()
-          .toLowerCase();
+  const handleSearchChange =
+    (value: string) => {
+      setSearch(value);
 
-      let result =
-        leads.filter(
-          (lead) => {
-            const matchesSearch =
-              !normalizedSearch ||
-              [
-                lead.firstName,
-                lead.lastName,
-                lead.email,
-                lead.company,
-                lead.source,
-                lead.stage,
-                lead.qualification,
-              ].some(
-                (value) =>
-                  value
-                    ?.toLowerCase()
-                    .includes(
-                      normalizedSearch,
-                    ),
-              );
+      setPage(1);
+    };
 
-            let matchesFilter =
-              true;
+  const handleFilterChange =
+    (value: LeadFilter) => {
+      setFilter(value);
 
-            if (
-              filter ===
-              'hot'
-            ) {
-              matchesFilter =
-                lead.temperature ===
-                'Hot';
-            }
+      setPage(1);
+    };
 
-            if (
-              filter ===
-              'warm'
-            ) {
-              matchesFilter =
-                lead.temperature ===
-                'Warm';
-            }
+  const handleSortChange =
+    (value: LeadSort) => {
+      setSort(value);
 
-            if (
-              filter ===
-              'attention'
-            ) {
-              matchesFilter =
-                lead.needsAttention;
-            }
-
-            return (
-              matchesSearch &&
-              matchesFilter
-            );
-          },
-        );
-
-      result =
-        [...result];
-
-      switch (sort) {
-        case 'value-high':
-          result.sort(
-            (a, b) =>
-              b.value -
-              a.value,
-          );
-          break;
-
-        case 'value-low':
-          result.sort(
-            (a, b) =>
-              a.value -
-              b.value,
-          );
-          break;
-
-        case 'company':
-          result.sort(
-            (a, b) =>
-              a.company.localeCompare(
-                b.company,
-              ),
-          );
-          break;
-
-        case 'priority':
-        default:
-          result.sort(
-            (a, b) =>
-              b.priority -
-              a.priority,
-          );
-          break;
-      }
-
-      return result;
-    }, [
-      leads,
-      search,
-      filter,
-      sort,
-    ]);
-
-  const activeLeads =
-    leads.filter(
-      (lead) =>
-        lead.stage !== 'Won' &&
-        lead.stage !== 'Lost',
-    );
+      setPage(1);
+    };
 
   const totalValue =
-    activeLeads.reduce(
-      (
-        total,
-        lead,
-      ) =>
-        total +
-        lead.value,
-      0,
-    );
+    summary.potentialValueCents /
+    100;
 
   const attentionCount =
-    activeLeads.filter(
-      (lead) =>
-        lead.needsAttention,
-    ).length;
+    summary.attentionCount;
 
   /* =======================================================
      CREATE ACTIONS
@@ -1358,23 +1405,7 @@ export default function LeadsPage() {
             },
           );
 
-        const created =
-          extractMutatedLead(
-            response,
-          );
-
-        if (created) {
-          setLeads(
-            (previous) => [
-              mapLeadToUi(
-                created,
-              ),
-              ...previous,
-            ],
-          );
-        } else {
-          await loadLeads();
-        }
+        void response;
 
         setIsCreateModalOpen(
           false,
@@ -1383,6 +1414,12 @@ export default function LeadsPage() {
         setCreateForm(
           initialLeadForm,
         );
+
+        if (page !== 1) {
+          setPage(1);
+        } else {
+          await loadLeads();
+        }
 
         setSuccessMessage(
           'Lead created successfully.',
@@ -1530,34 +1567,13 @@ export default function LeadsPage() {
             },
           );
 
-        const updated =
-          extractMutatedLead(
-            response,
-          );
-
-        if (updated) {
-          const mapped =
-            mapLeadToUi(
-              updated,
-            );
-
-          setLeads(
-            (previous) =>
-              previous.map(
-                (lead) =>
-                  lead.id ===
-                  mapped.id
-                    ? mapped
-                    : lead,
-              ),
-          );
-        } else {
-          await loadLeads();
-        }
+        void response;
 
         setEditingLead(
           null,
         );
+
+        await loadLeads();
 
         setSuccessMessage(
           'Lead updated successfully.',
@@ -1648,18 +1664,24 @@ export default function LeadsPage() {
           },
         );
 
-        setLeads(
-          (previous) =>
-            previous.filter(
-              (lead) =>
-                lead.id !==
-                deletingLead.id,
-            ),
-        );
-
         setDeletingLead(
           null,
         );
+
+        if (
+          leads.length === 1 &&
+          page > 1
+        ) {
+          setPage(
+            (currentPage) =>
+              Math.max(
+                1,
+                currentPage - 1,
+              ),
+          );
+        } else {
+          await loadLeads();
+        }
 
         setSuccessMessage(
           'Lead deleted successfully.',
@@ -1792,7 +1814,7 @@ export default function LeadsPage() {
                   size={14}
                 />
               }
-              label={`${activeLeads.length} active leads`}
+              label={`${summary.activeCount} active leads`}
             />
 
             <SummaryChip
@@ -1842,18 +1864,18 @@ export default function LeadsPage() {
           <LeadsToolbar
             search={search}
             onSearchChange={
-              setSearch
+              handleSearchChange
             }
             filter={filter}
             onFilterChange={
-              setFilter
+              handleFilterChange
             }
             sort={sort}
             onSortChange={
-              setSort
+              handleSortChange
             }
             resultCount={
-              filteredLeads.length
+              pagination.total
             }
             onAddLead={
               openCreateModal
@@ -1879,7 +1901,7 @@ export default function LeadsPage() {
                 void loadLeads();
               }}
             />
-          ) : filteredLeads.length >
+          ) : leads.length >
             0 ? (
             <>
               <div
@@ -1890,7 +1912,7 @@ export default function LeadsPage() {
               >
                 <LeadsTable
                   leads={
-                    filteredLeads
+                    leads
                   }
                   onEdit={
                     openEditModal
@@ -1909,7 +1931,7 @@ export default function LeadsPage() {
                   lg:hidden
                 "
               >
-                {filteredLeads.map(
+                {leads.map(
                   (lead) => (
                     <LeadMobileCard
                       key={
@@ -1928,6 +1950,45 @@ export default function LeadsPage() {
                   ),
                 )}
               </div>
+
+              <PaginationControls
+                pagination={
+                  pagination
+                }
+                isLoading={
+                  isLoading
+                }
+                onPrevious={() => {
+                  setPage(
+                    (currentPage) =>
+                      Math.max(
+                        1,
+                        currentPage - 1,
+                      ),
+                  );
+
+                  window.scrollTo({
+                    top: 0,
+                    behavior:
+                      'smooth',
+                  });
+                }}
+                onNext={() => {
+                  setPage(
+                    (currentPage) =>
+                      Math.min(
+                        pagination.totalPages,
+                        currentPage + 1,
+                      ),
+                  );
+
+                  window.scrollTo({
+                    top: 0,
+                    behavior:
+                      'smooth',
+                  });
+                }}
+              />
             </>
           ) : (
             <EmptyLeadsState
@@ -1938,6 +1999,8 @@ export default function LeadsPage() {
                 setFilter(
                   'all',
                 );
+
+                setPage(1);
               }}
               onAddLead={
                 openCreateModal
@@ -2309,6 +2372,196 @@ function EmptyLeadsState({
     </div>
   );
 }
+
+/* =========================================================
+   PAGINATION
+========================================================= */
+
+function PaginationControls({
+  pagination,
+  isLoading,
+  onPrevious,
+  onNext,
+}: {
+  pagination: LeadsListMeta;
+  isLoading: boolean;
+  onPrevious: () => void;
+  onNext: () => void;
+}) {
+  const start =
+    pagination.total === 0
+      ? 0
+      : (pagination.page - 1) *
+          pagination.pageSize +
+        1;
+
+  const end =
+    Math.min(
+      pagination.page *
+        pagination.pageSize,
+      pagination.total,
+    );
+
+  return (
+    <div
+      className="
+        mt-4
+        flex
+        flex-col
+        gap-3
+        rounded-[16px]
+        border
+        border-[var(--cf-border)]
+        bg-[var(--cf-surface)]
+        px-4
+        py-3
+        shadow-[var(--cf-shadow)]
+
+        sm:flex-row
+        sm:items-center
+        sm:justify-between
+      "
+    >
+      <div
+        className="
+          text-[12px]
+          text-[var(--cf-text-muted)]
+        "
+      >
+        Showing{' '}
+        <span
+          className="
+            font-semibold
+            text-[var(--cf-text)]
+          "
+        >
+          {start}-{end}
+        </span>{' '}
+        of{' '}
+        <span
+          className="
+            font-semibold
+            text-[var(--cf-text)]
+          "
+        >
+          {pagination.total}
+        </span>{' '}
+        leads
+      </div>
+
+      <div
+        className="
+          flex
+          items-center
+          justify-between
+          gap-2
+
+          sm:justify-end
+        "
+      >
+        <button
+          type="button"
+          onClick={
+            onPrevious
+          }
+          disabled={
+            isLoading ||
+            !pagination.hasPreviousPage
+          }
+          className="
+            inline-flex
+            h-10
+            items-center
+            justify-center
+            gap-1.5
+            rounded-xl
+            border
+            border-[var(--cf-border)]
+            bg-[var(--cf-surface)]
+            px-3
+            text-[12px]
+            font-semibold
+            text-[var(--cf-text)]
+            transition
+            hover:bg-[var(--cf-surface-soft)]
+            disabled:cursor-not-allowed
+            disabled:opacity-40
+          "
+        >
+          <ChevronLeft
+            size={15}
+          />
+
+          Previous
+        </button>
+
+        <div
+          className="
+            whitespace-nowrap
+            px-2
+            text-[12px]
+            font-medium
+            text-[var(--cf-text-secondary)]
+          "
+        >
+          Page{' '}
+          <span
+            className="
+              font-semibold
+              text-[var(--cf-text)]
+            "
+          >
+            {pagination.page}
+          </span>{' '}
+          of{' '}
+          <span
+            className="
+              font-semibold
+              text-[var(--cf-text)]
+            "
+          >
+            {pagination.totalPages}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={onNext}
+          disabled={
+            isLoading ||
+            !pagination.hasNextPage
+          }
+          className="
+            inline-flex
+            h-10
+            items-center
+            justify-center
+            gap-1.5
+            rounded-xl
+            border
+            border-[var(--cf-border)]
+            bg-[var(--cf-surface)]
+            px-3
+            text-[12px]
+            font-semibold
+            text-[var(--cf-text)]
+            transition
+            hover:bg-[var(--cf-surface-soft)]
+            disabled:cursor-not-allowed
+            disabled:opacity-40
+          "
+        >
+          Next
+
+          <ChevronRight
+            size={15}
+          />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 
 /* =========================================================
    LEAD FORM MODAL

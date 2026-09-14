@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -16,12 +17,10 @@ import { SessionGuard } from '../guards/session.guard';
 import { JwtPayload } from '../types/jwt-payload.type';
 
 import { CreateLeadDto } from './dto/create-lead.dto';
+import { QueryLeadsDto } from './dto/query-leads.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { LeadsService } from './leads.service';
 
-// IMPORTANT:
-// Replace this import with the SAME JWT guard
-// that you already use on /auth/me.
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
 type AuthenticatedRequest = Request & {
@@ -56,9 +55,13 @@ export class LeadsController {
   findAll(
     @Req()
     request: AuthenticatedRequest,
+
+    @Query()
+    query: QueryLeadsDto,
   ) {
     return this.leadsService.findAll(
       request.user.organizationId,
+      query,
     );
   }
 
