@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  AlertTriangle,
   Sparkles,
   UsersRound,
   X,
@@ -13,24 +14,34 @@ import {
   useState,
 } from 'react';
 
-import { useAuth } from '@/components/providers/auth-provider';
-import {
-  LeadsTable,
-} from '@/components/leads/leads-table';
-import type {
-  Lead,
-} from '@/components/leads/leads-table';
 import {
   LeadMobileCard,
 } from '@/components/leads/lead-mobile-card';
+
+import {
+  LeadsTable,
+} from '@/components/leads/leads-table';
+
+import type {
+  Lead,
+} from '@/components/leads/leads-table';
+
 import {
   LeadsToolbar,
 } from '@/components/leads/leads-toolbar';
+
 import type {
   LeadFilter,
   LeadSort,
 } from '@/components/leads/leads-toolbar';
-import { ApiError } from '@/lib/api';
+
+import {
+  useAuth,
+} from '@/components/providers/auth-provider';
+
+import {
+  ApiError,
+} from '@/lib/api';
 
 /* =========================================================
    API TYPES
@@ -38,20 +49,35 @@ import { ApiError } from '@/lib/api';
 
 interface LeadApiItem {
   id: string;
+
   firstName?: string | null;
   lastName?: string | null;
+
   email?: string | null;
+  phone?: string | null;
+
   company?: string | null;
   jobTitle?: string | null;
-  phone?: string | null;
   website?: string | null;
-  valueCents?: number | null;
+
+  source?: string | null;
+
   stage?: string | null;
   temperature?: string | null;
   qualification?: string | null;
-  source?: string | null;
+
+  valueCents?: number | null;
+  currency?: string | null;
+
   notes?: string | null;
+
+  lastActivityAt?: string | null;
+  lastContactedAt?: string | null;
   nextFollowUpAt?: string | null;
+
+  aiSummary?: string | null;
+  aiNextBestAction?: string | null;
+
   createdAt?: string | null;
   updatedAt?: string | null;
 }
@@ -61,7 +87,7 @@ interface LeadsListResponse {
   data?: LeadApiItem[];
 }
 
-type CreateLeadResponse =
+type LeadMutationResponse =
   | LeadApiItem
   | {
       lead?: LeadApiItem;
@@ -70,42 +96,75 @@ type CreateLeadResponse =
 
 type TemperatureValue =
   | 'Hot'
-  | 'Warm';
+  | 'Warm'
+  | 'Cold';
 
-interface CreateLeadFormState {
+type StageValue =
+  | 'New'
+  | 'Contacted'
+  | 'Qualified'
+  | 'Proposal'
+  | 'Negotiation'
+  | 'Won'
+  | 'Lost';
+
+interface LeadFormState {
   firstName: string;
   lastName: string;
+
   company: string;
   jobTitle: string;
+
   email: string;
   phone: string;
+
   website: string;
   source: string;
+
   estimatedValue: string;
-  temperature: TemperatureValue;
+
+  temperature:
+    TemperatureValue;
+
+  stage: StageValue;
+
   nextFollowUp: string;
+
   notes: string;
 }
 
 /* =========================================================
-   HELPERS
+   FORM DEFAULTS
 ========================================================= */
 
-const initialCreateLeadForm: CreateLeadFormState =
+const initialLeadForm: LeadFormState =
   {
     firstName: '',
     lastName: '',
+
     company: '',
     jobTitle: '',
+
     email: '',
     phone: '',
+
     website: '',
     source: 'Website',
+
     estimatedValue: '',
+
     temperature: 'Warm',
+
+    stage: 'New',
+
     nextFollowUp: '',
+
     notes: '',
   };
+
+/* =========================================================
+   HELPERS
+========================================================= */
 
 function formatCurrency(
   amount: number,
@@ -127,6 +186,7 @@ function getInitials(
 ) {
   const first =
     firstName?.trim()?.[0] ?? '';
+
   const last =
     lastName?.trim()?.[0] ?? '';
 
@@ -135,25 +195,39 @@ function getInitials(
   }
 
   const companyWords =
-    company?.trim().split(/\s+/) ?? [];
+    company
+      ?.trim()
+      .split(/\s+/) ?? [];
 
-  return companyWords
-    .slice(0, 2)
-    .map((word) => word[0] ?? '')
-    .join('')
-    .toUpperCase() || 'LD';
+  return (
+    companyWords
+      .slice(0, 2)
+      .map(
+        (word) =>
+          word[0] ?? '',
+      )
+      .join('')
+      .toUpperCase() ||
+    'LD'
+  );
 }
 
 function normalizeTemperature(
   value?: string | null,
-): 'Hot' | 'Warm' {
-  if (
-    value?.toUpperCase() === 'HOT'
+): TemperatureValue {
+  switch (
+    value?.toUpperCase()
   ) {
-    return 'Hot';
-  }
+    case 'HOT':
+      return 'Hot';
 
-  return 'Warm';
+    case 'COLD':
+      return 'Cold';
+
+    case 'WARM':
+    default:
+      return 'Warm';
+  }
 }
 
 function normalizeQualification(
@@ -170,9 +244,12 @@ function normalizeQualification(
     case 'GOOD FIT':
       return 'Good fit';
 
-    case 'NEEDS_DISCOVERY':
-    case 'NEEDS DISCOVERY':
-      return 'Needs discovery';
+    case 'WEAK_FIT':
+    case 'WEAK FIT':
+      return 'Weak fit';
+
+    case 'UNQUALIFIED':
+      return 'Unqualified';
 
     case 'UNASSESSED':
     default:
@@ -182,24 +259,219 @@ function normalizeQualification(
 
 function normalizeStage(
   value?: string | null,
-) {
+): StageValue {
   switch (
     value?.toUpperCase()
   ) {
-    case 'NEW':
-      return 'New';
+    case 'CONTACTED':
+      return 'Contacted';
+
     case 'QUALIFIED':
       return 'Qualified';
+
     case 'PROPOSAL':
       return 'Proposal';
+
     case 'NEGOTIATION':
       return 'Negotiation';
+
     case 'WON':
       return 'Won';
+
     case 'LOST':
       return 'Lost';
+
+    case 'NEW':
     default:
       return 'New';
+  }
+}
+
+function formatRelativeDate(
+  value?: string | null,
+) {
+  if (!value) {
+    return 'No activity yet';
+  }
+
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return 'No activity yet';
+  }
+
+  const difference =
+    Date.now() -
+    date.getTime();
+
+  if (difference < 60_000) {
+    return 'Just now';
+  }
+
+  const minutes =
+    Math.floor(
+      difference / 60_000,
+    );
+
+  if (minutes < 60) {
+    return `${minutes} min ago`;
+  }
+
+  const hours =
+    Math.floor(
+      minutes / 60,
+    );
+
+  if (hours < 24) {
+    return `${hours} ${
+      hours === 1
+        ? 'hour'
+        : 'hours'
+    } ago`;
+  }
+
+  const days =
+    Math.floor(
+      hours / 24,
+    );
+
+  if (days < 30) {
+    return `${days} ${
+      days === 1
+        ? 'day'
+        : 'days'
+    } ago`;
+  }
+
+  return date.toLocaleDateString(
+    'en-GB',
+    {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    },
+  );
+}
+
+function toDateTimeLocal(
+  value?: string | null,
+) {
+  if (!value) {
+    return '';
+  }
+
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return '';
+  }
+
+  const offset =
+    date.getTimezoneOffset();
+
+  const localDate =
+    new Date(
+      date.getTime() -
+        offset * 60_000,
+    );
+
+  return localDate
+    .toISOString()
+    .slice(0, 16);
+}
+
+function getSignal(
+  lead: LeadApiItem,
+) {
+  if (
+    lead.nextFollowUpAt
+  ) {
+    const followUp =
+      new Date(
+        lead.nextFollowUpAt,
+      );
+
+    if (
+      !Number.isNaN(
+        followUp.getTime(),
+      ) &&
+      followUp.getTime() <=
+        Date.now()
+    ) {
+      return 'Follow-up due';
+    }
+
+    return 'Follow-up scheduled';
+  }
+
+  switch (
+    normalizeStage(
+      lead.stage,
+    )
+  ) {
+    case 'New':
+      return 'New lead';
+
+    case 'Contacted':
+      return 'Contacted';
+
+    case 'Qualified':
+      return 'Qualified';
+
+    case 'Proposal':
+      return 'Proposal';
+
+    case 'Negotiation':
+      return 'Negotiation';
+
+    case 'Won':
+      return 'Won';
+
+    case 'Lost':
+      return 'Lost';
+
+    default:
+      return 'Lead';
+  }
+}
+
+function getDefaultAction(
+  stage: StageValue,
+) {
+  switch (stage) {
+    case 'New':
+      return 'Qualify lead';
+
+    case 'Contacted':
+      return 'Continue conversation';
+
+    case 'Qualified':
+      return 'Create proposal';
+
+    case 'Proposal':
+      return 'Review follow-up';
+
+    case 'Negotiation':
+      return 'Prepare negotiation';
+
+    case 'Won':
+      return 'Review handoff';
+
+    case 'Lost':
+      return 'Review lost deal';
+
+    default:
+      return 'Review lead';
   }
 }
 
@@ -207,115 +479,373 @@ function mapLeadToUi(
   lead: LeadApiItem,
 ): Lead {
   const firstName =
-    lead.firstName?.trim() || '';
+    lead.firstName
+      ?.trim() || '';
+
   const lastName =
-    lead.lastName?.trim() || '';
+    lead.lastName
+      ?.trim() || '';
+
+  const company =
+    lead.company
+      ?.trim() ||
+    'Unknown company';
+
   const value =
     Math.round(
-      (lead.valueCents ?? 0) / 100,
+      (
+        lead.valueCents ??
+        0
+      ) / 100,
     ) || 0;
+
   const stage =
-    normalizeStage(lead.stage);
+    normalizeStage(
+      lead.stage,
+    );
+
   const temperature =
     normalizeTemperature(
       lead.temperature,
     );
 
+  const followUpDue =
+    lead.nextFollowUpAt
+      ? new Date(
+          lead.nextFollowUpAt,
+        ).getTime() <=
+        Date.now()
+      : false;
+
+  const temperaturePriority =
+    temperature === 'Hot'
+      ? 30
+      : temperature ===
+          'Warm'
+        ? 20
+        : 10;
+
+  const stagePriority: Record<
+    StageValue,
+    number
+  > = {
+    New: 10,
+    Contacted: 20,
+    Qualified: 30,
+    Proposal: 40,
+    Negotiation: 45,
+    Won: 0,
+    Lost: 0,
+  };
+
   return {
     id: lead.id,
+
     firstName,
     lastName,
-    email: lead.email ?? '',
-    company:
-      lead.company ?? 'Unknown company',
-    initials: getInitials(
-      firstName,
-      lastName,
-      lead.company,
-    ),
+
+    email:
+      lead.email ?? '',
+
+    company,
+
+    jobTitle:
+      lead.jobTitle ?? '',
+
+    phone:
+      lead.phone ?? '',
+
+    website:
+      lead.website ?? '',
+
+    notes:
+      lead.notes ?? '',
+
+    nextFollowUpAt:
+      lead.nextFollowUpAt ??
+      null,
+
+    initials:
+      getInitials(
+        firstName,
+        lastName,
+        company,
+      ),
+
     value,
+
     stage,
+
     temperature,
+
     qualification:
       normalizeQualification(
         lead.qualification,
       ),
+
     source:
-      lead.source ?? 'Website',
-    lastActivity: 'Just now',
+      lead.source ??
+      'Website',
+
+    lastActivity:
+      formatRelativeDate(
+        lead.lastActivityAt ??
+          lead.updatedAt ??
+          lead.createdAt,
+      ),
+
     signal:
-      lead.nextFollowUpAt
-        ? 'Follow-up scheduled'
-        : 'Newly created lead',
+      getSignal(lead),
+
     insight:
-      lead.notes?.trim() ||
-      'Lead created and ready for qualification.',
+      lead.aiSummary ??
+      lead.notes?.trim() ??
+      'AI intelligence will appear when enough lead context is available.',
+
     actionLabel:
-      stage === 'New'
-        ? 'Qualify lead'
-        : stage === 'Qualified'
-          ? 'Create proposal'
-          : 'Review lead',
+      lead.aiNextBestAction ??
+      getDefaultAction(
+        stage,
+      ),
+
     actionHint:
-      lead.notes?.trim() ||
-      'Start qualification and add more context.',
+      followUpDue
+        ? 'This follow-up is due now.'
+        : lead.nextFollowUpAt
+          ? 'A follow-up is already scheduled.'
+          : 'Review the lead and decide the next best step.',
+
     needsAttention:
+      followUpDue ||
       temperature === 'Hot',
+
     priority:
-      temperature === 'Hot'
-        ? 90
-        : 70,
+      (
+        followUpDue
+          ? 100
+          : 0
+      ) +
+      temperaturePriority +
+      stagePriority[stage],
   };
 }
 
 function extractLeads(
-  payload: LeadsListResponse | LeadApiItem[],
+  payload:
+    | LeadsListResponse
+    | LeadApiItem[],
 ): LeadApiItem[] {
-  if (Array.isArray(payload)) {
+  if (
+    Array.isArray(payload)
+  ) {
     return payload;
   }
 
-  if (Array.isArray(payload.leads)) {
+  if (
+    Array.isArray(
+      payload.leads,
+    )
+  ) {
     return payload.leads;
   }
 
-  if (Array.isArray(payload.data)) {
+  if (
+    Array.isArray(
+      payload.data,
+    )
+  ) {
     return payload.data;
   }
 
   return [];
 }
 
-function extractCreatedLead(
-  payload: CreateLeadResponse,
+function extractMutatedLead(
+  payload:
+    LeadMutationResponse,
 ): LeadApiItem | null {
-  /*
-   * The NestJS LeadsService currently returns the
-   * Prisma-created lead directly:
-   *
-   * {
-   *   id: '...',
-   *   firstName: '...',
-   *   ...
-   * }
-   *
-   * Keep support for wrapped responses too so this
-   * frontend does not break if the API response is
-   * later standardized as { lead } or { data }.
-   */
   if (
     'id' in payload &&
-    typeof payload.id === 'string'
+    typeof payload.id ===
+      'string'
   ) {
     return payload;
   }
 
-  if ('lead' in payload && payload.lead) {
+  if (
+    'lead' in payload &&
+    payload.lead
+  ) {
     return payload.lead;
   }
 
-  if ('data' in payload && payload.data) {
+  if (
+    'data' in payload &&
+    payload.data
+  ) {
     return payload.data;
+  }
+
+  return null;
+}
+
+function leadToForm(
+  lead: Lead,
+): LeadFormState {
+  return {
+    firstName:
+      lead.firstName,
+
+    lastName:
+      lead.lastName,
+
+    company:
+      lead.company ===
+      'Unknown company'
+        ? ''
+        : lead.company,
+
+    jobTitle:
+      lead.jobTitle ?? '',
+
+    email:
+      lead.email,
+
+    phone:
+      lead.phone ?? '',
+
+    website:
+      lead.website ?? '',
+
+    source:
+      lead.source || 'Website',
+
+    estimatedValue:
+      String(
+        lead.value ?? 0,
+      ),
+
+    temperature:
+      lead.temperature,
+
+    stage:
+      lead.stage,
+
+    nextFollowUp:
+      toDateTimeLocal(
+        lead.nextFollowUpAt,
+      ),
+
+    notes:
+      lead.notes ?? '',
+  };
+}
+
+function buildLeadPayload(
+  form: LeadFormState,
+  includeStage: boolean,
+) {
+  const estimatedValue =
+    Number(
+      form.estimatedValue ||
+        '0',
+    );
+
+  return {
+    firstName:
+      form.firstName.trim(),
+
+    lastName:
+      form.lastName.trim() ||
+      undefined,
+
+    company:
+      form.company.trim(),
+
+    jobTitle:
+      form.jobTitle.trim() ||
+      undefined,
+
+    email:
+      form.email.trim(),
+
+    phone:
+      form.phone.trim() ||
+      undefined,
+
+    website:
+      form.website.trim() ||
+      undefined,
+
+    source:
+      form.source,
+
+    temperature:
+      form.temperature.toUpperCase(),
+
+    ...(includeStage
+      ? {
+          stage:
+            form.stage.toUpperCase(),
+        }
+      : {
+          stage: 'NEW',
+          qualification:
+            'UNASSESSED',
+        }),
+
+    valueCents:
+      Math.round(
+        estimatedValue * 100,
+      ),
+
+    nextFollowUpAt:
+      form.nextFollowUp
+        ? new Date(
+            form.nextFollowUp,
+          ).toISOString()
+        : undefined,
+
+    notes:
+      form.notes.trim() ||
+      undefined,
+  };
+}
+
+function getFormError(
+  form: LeadFormState,
+): string | null {
+  if (
+    !form.firstName.trim()
+  ) {
+    return 'First name is required.';
+  }
+
+  if (
+    !form.company.trim()
+  ) {
+    return 'Company is required.';
+  }
+
+  if (
+    !form.email.trim()
+  ) {
+    return 'Email is required.';
+  }
+
+  const estimatedValue =
+    Number(
+      form.estimatedValue ||
+        '0',
+    );
+
+  if (
+    Number.isNaN(
+      estimatedValue,
+    ) ||
+    estimatedValue < 0
+  ) {
+    return 'Estimated value must be a valid number.';
   }
 
   return null;
@@ -326,17 +856,21 @@ function extractCreatedLead(
 ========================================================= */
 
 export default function LeadsPage() {
-  const { request } = useAuth();
+  const {
+    request,
+  } = useAuth();
 
   const [
     leads,
     setLeads,
-  ] = useState<Lead[]>([]);
+  ] =
+    useState<Lead[]>([]);
 
   const [
     search,
     setSearch,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     filter,
@@ -357,169 +891,230 @@ export default function LeadsPage() {
   const [
     isLoading,
     setIsLoading,
-  ] = useState(true);
+  ] =
+    useState(true);
 
   const [
     pageError,
     setPageError,
-  ] = useState<string | null>(
-    null,
-  );
+  ] =
+    useState<
+      string | null
+    >(null);
+
+  const [
+    successMessage,
+    setSuccessMessage,
+  ] =
+    useState<
+      string | null
+    >(null);
+
+  /* =======================================================
+     CREATE
+  ======================================================= */
 
   const [
     isCreateModalOpen,
     setIsCreateModalOpen,
-  ] = useState(false);
-
-  const [
-    isSubmittingCreate,
-    setIsSubmittingCreate,
-  ] = useState(false);
-
-  const [
-    createError,
-    setCreateError,
-  ] = useState<string | null>(
-    null,
-  );
+  ] =
+    useState(false);
 
   const [
     createForm,
     setCreateForm,
-  ] = useState<CreateLeadFormState>(
-    initialCreateLeadForm,
-  );
-
-  const [
-    createSuccessMessage,
-    setCreateSuccessMessage,
-  ] = useState<string | null>(
-    null,
-  );
-
-  const openCreateModal =
-    useCallback(() => {
-      setCreateError(null);
-      setCreateSuccessMessage(
-        null,
-      );
-      setCreateForm(
-        initialCreateLeadForm,
-      );
-      setIsCreateModalOpen(true);
-    }, []);
-
-  const closeCreateModal =
-    useCallback(() => {
-      if (isSubmittingCreate) {
-        return;
-      }
-
-      setIsCreateModalOpen(false);
-      setCreateError(null);
-    }, [isSubmittingCreate]);
-
-  useEffect(() => {
-    const originalOverflow =
-      document.body.style.overflow;
-
-    if (isCreateModalOpen) {
-      document.body.style.overflow =
-        'hidden';
-    }
-
-    return () => {
-      document.body.style.overflow =
-        originalOverflow;
-    };
-  }, [isCreateModalOpen]);
-
-  useEffect(() => {
-    if (!isCreateModalOpen) {
-      return;
-    }
-
-    const handleKeyDown = (
-      event: KeyboardEvent,
-    ) => {
-      if (
-        event.key === 'Escape' &&
-        !isSubmittingCreate
-      ) {
-        closeCreateModal();
-      }
-    };
-
-    window.addEventListener(
-      'keydown',
-      handleKeyDown,
+  ] =
+    useState<LeadFormState>(
+      initialLeadForm,
     );
 
-    return () => {
-      window.removeEventListener(
-        'keydown',
-        handleKeyDown,
-      );
-    };
-  }, [
-    closeCreateModal,
-    isCreateModalOpen,
+  const [
+    createError,
+    setCreateError,
+  ] =
+    useState<
+      string | null
+    >(null);
+
+  const [
     isSubmittingCreate,
-  ]);
+    setIsSubmittingCreate,
+  ] =
+    useState(false);
+
+  /* =======================================================
+     EDIT
+  ======================================================= */
+
+  const [
+    editingLead,
+    setEditingLead,
+  ] =
+    useState<Lead | null>(
+      null,
+    );
+
+  const [
+    editForm,
+    setEditForm,
+  ] =
+    useState<LeadFormState>(
+      initialLeadForm,
+    );
+
+  const [
+    editError,
+    setEditError,
+  ] =
+    useState<
+      string | null
+    >(null);
+
+  const [
+    isSubmittingEdit,
+    setIsSubmittingEdit,
+  ] =
+    useState(false);
+
+  /* =======================================================
+     DELETE
+  ======================================================= */
+
+  const [
+    deletingLead,
+    setDeletingLead,
+  ] =
+    useState<Lead | null>(
+      null,
+    );
+
+  const [
+    deleteError,
+    setDeleteError,
+  ] =
+    useState<
+      string | null
+    >(null);
+
+  const [
+    isDeleting,
+    setIsDeleting,
+  ] =
+    useState(false);
+
+  /* =======================================================
+     LOAD
+  ======================================================= */
 
   const loadLeads =
-    useCallback(async () => {
-      setIsLoading(true);
-      setPageError(null);
+    useCallback(
+      async () => {
+        setIsLoading(true);
+        setPageError(null);
 
-      try {
-        const response =
-          await request<
-            LeadsListResponse | LeadApiItem[]
-          >('/leads');
+        try {
+          const response =
+            await request<
+              | LeadsListResponse
+              | LeadApiItem[]
+            >(
+              '/leads',
+            );
 
-        const items =
-          extractLeads(response);
+          const items =
+            extractLeads(
+              response,
+            );
 
-        setLeads(
-          items.map(mapLeadToUi),
-        );
-      } catch (error) {
-        if (
-          error instanceof Error
-        ) {
-          setPageError(
-            error.message,
+          setLeads(
+            items.map(
+              mapLeadToUi,
+            ),
           );
-        } else {
-          setPageError(
-            'Failed to load leads.',
+        } catch (error) {
+          if (
+            error instanceof
+            Error
+          ) {
+            setPageError(
+              error.message,
+            );
+          } else {
+            setPageError(
+              'Failed to load leads.',
+            );
+          }
+        } finally {
+          setIsLoading(
+            false,
           );
         }
-      } finally {
-        setIsLoading(false);
-      }
-    }, [request]);
+      },
+      [request],
+    );
 
   useEffect(() => {
     void loadLeads();
   }, [loadLeads]);
 
+  /* =======================================================
+     SUCCESS MESSAGE
+  ======================================================= */
+
   useEffect(() => {
-    if (!createSuccessMessage) {
+    if (
+      !successMessage
+    ) {
       return;
     }
 
     const timeout =
-      window.setTimeout(() => {
-        setCreateSuccessMessage(
-          null,
-        );
-      }, 3500);
+      window.setTimeout(
+        () => {
+          setSuccessMessage(
+            null,
+          );
+        },
+        3500,
+      );
 
-    return () =>
-      window.clearTimeout(timeout);
-  }, [createSuccessMessage]);
+    return () => {
+      window.clearTimeout(
+        timeout,
+      );
+    };
+  }, [successMessage]);
+
+  /* =======================================================
+     MODAL PAGE LOCK
+  ======================================================= */
+
+  const hasOpenModal =
+    isCreateModalOpen ||
+    editingLead !== null ||
+    deletingLead !== null;
+
+  useEffect(() => {
+    const originalOverflow =
+      document.body.style
+        .overflow;
+
+    if (hasOpenModal) {
+      document.body.style
+        .overflow =
+        'hidden';
+    }
+
+    return () => {
+      document.body.style
+        .overflow =
+        originalOverflow;
+    };
+  }, [hasOpenModal]);
+
+  /* =======================================================
+     FILTER + SEARCH + SORT
+  ======================================================= */
 
   const filteredLeads =
     useMemo(() => {
@@ -529,72 +1124,80 @@ export default function LeadsPage() {
           .toLowerCase();
 
       let result =
-        leads.filter((lead) => {
-          const matchesSearch =
-            !normalizedSearch ||
-            [
-              lead.firstName,
-              lead.lastName,
-              lead.email,
-              lead.company,
-              lead.source,
-              lead.stage,
-              lead.qualification,
-            ].some((value) =>
-              value
-                ?.toLowerCase()
-                .includes(
-                  normalizedSearch,
-                ),
+        leads.filter(
+          (lead) => {
+            const matchesSearch =
+              !normalizedSearch ||
+              [
+                lead.firstName,
+                lead.lastName,
+                lead.email,
+                lead.company,
+                lead.source,
+                lead.stage,
+                lead.qualification,
+              ].some(
+                (value) =>
+                  value
+                    ?.toLowerCase()
+                    .includes(
+                      normalizedSearch,
+                    ),
+              );
+
+            let matchesFilter =
+              true;
+
+            if (
+              filter ===
+              'hot'
+            ) {
+              matchesFilter =
+                lead.temperature ===
+                'Hot';
+            }
+
+            if (
+              filter ===
+              'warm'
+            ) {
+              matchesFilter =
+                lead.temperature ===
+                'Warm';
+            }
+
+            if (
+              filter ===
+              'attention'
+            ) {
+              matchesFilter =
+                lead.needsAttention;
+            }
+
+            return (
+              matchesSearch &&
+              matchesFilter
             );
+          },
+        );
 
-          let matchesFilter =
-            true;
-
-          if (
-            filter === 'hot'
-          ) {
-            matchesFilter =
-              lead.temperature ===
-              'Hot';
-          }
-
-          if (
-            filter === 'warm'
-          ) {
-            matchesFilter =
-              lead.temperature ===
-              'Warm';
-          }
-
-          if (
-            filter ===
-            'attention'
-          ) {
-            matchesFilter =
-              lead.needsAttention;
-          }
-
-          return (
-            matchesSearch &&
-            matchesFilter
-          );
-        });
-
-      result = [...result];
+      result =
+        [...result];
 
       switch (sort) {
         case 'value-high':
           result.sort(
             (a, b) =>
-              b.value - a.value,
+              b.value -
+              a.value,
           );
           break;
 
         case 'value-low':
           result.sort(
             (a, b) =>
-              a.value - b.value,
+              a.value -
+              b.value,
           );
           break;
 
@@ -625,85 +1228,107 @@ export default function LeadsPage() {
       sort,
     ]);
 
+  const activeLeads =
+    leads.filter(
+      (lead) =>
+        lead.stage !== 'Won' &&
+        lead.stage !== 'Lost',
+    );
+
   const totalValue =
-    leads.reduce(
-      (total, lead) =>
-        total + lead.value,
+    activeLeads.reduce(
+      (
+        total,
+        lead,
+      ) =>
+        total +
+        lead.value,
       0,
     );
 
   const attentionCount =
-    leads.filter(
+    activeLeads.filter(
       (lead) =>
         lead.needsAttention,
     ).length;
 
+  /* =======================================================
+     CREATE ACTIONS
+  ======================================================= */
+
+  const openCreateModal =
+    useCallback(() => {
+      setCreateForm(
+        initialLeadForm,
+      );
+
+      setCreateError(
+        null,
+      );
+
+      setIsCreateModalOpen(
+        true,
+      );
+    }, []);
+
+  const closeCreateModal =
+    useCallback(() => {
+      if (
+        isSubmittingCreate
+      ) {
+        return;
+      }
+
+      setIsCreateModalOpen(
+        false,
+      );
+
+      setCreateError(
+        null,
+      );
+    }, [
+      isSubmittingCreate,
+    ]);
+
   const handleCreateFieldChange =
     <
-      K extends keyof CreateLeadFormState,
+      K extends keyof LeadFormState,
     >(
       key: K,
-      value: CreateLeadFormState[K],
+      value:
+        LeadFormState[K],
     ) => {
-      setCreateForm((prev) => ({
-        ...prev,
-        [key]: value,
-      }));
+      setCreateForm(
+        (previous) => ({
+          ...previous,
+          [key]: value,
+        }),
+      );
     };
 
   const handleCreateLead =
     async (
-      event: React.FormEvent<HTMLFormElement>,
+      event:
+        React.FormEvent<HTMLFormElement>,
     ) => {
       event.preventDefault();
 
-      setCreateError(null);
-      setCreateSuccessMessage(
+      setCreateError(
         null,
       );
 
-      if (
-        !createForm.firstName.trim()
-      ) {
-        setCreateError(
-          'First name is required.',
-        );
-        return;
-      }
-
-      if (
-        !createForm.company.trim()
-      ) {
-        setCreateError(
-          'Company is required.',
-        );
-        return;
-      }
-
-      if (
-        !createForm.email.trim()
-      ) {
-        setCreateError(
-          'Email is required.',
-        );
-        return;
-      }
-
-      const estimatedValueNumber =
-        Number(
-          createForm.estimatedValue ||
-            '0',
+      const validationError =
+        getFormError(
+          createForm,
         );
 
       if (
-        Number.isNaN(
-          estimatedValueNumber,
-        ) ||
-        estimatedValueNumber < 0
+        validationError
       ) {
         setCreateError(
-          'Estimated value must be a valid number.',
+          validationError,
         );
+
         return;
       }
 
@@ -713,88 +1338,54 @@ export default function LeadsPage() {
 
       try {
         const response =
-          await request<CreateLeadResponse>(
+          await request<LeadMutationResponse>(
             '/leads',
             {
               method: 'POST',
+
               headers: {
                 'Content-Type':
                   'application/json',
               },
-              body: JSON.stringify({
-                firstName:
-                  createForm.firstName.trim(),
-                lastName:
-                  createForm.lastName.trim() ||
-                  undefined,
-                company:
-                  createForm.company.trim(),
-                jobTitle:
-                  createForm.jobTitle.trim() ||
-                  undefined,
-                email:
-                  createForm.email.trim(),
-                phone:
-                  createForm.phone.trim() ||
-                  undefined,
-                website:
-                  createForm.website.trim() ||
-                  undefined,
-                source:
-                  createForm.source,
-                temperature:
-                  createForm.temperature.toUpperCase(),
-                stage: 'NEW',
-                qualification:
-                  'UNASSESSED',
-                valueCents:
-                  Math.round(
-                    estimatedValueNumber *
-                      100,
+
+              body:
+                JSON.stringify(
+                  buildLeadPayload(
+                    createForm,
+                    false,
                   ),
-                nextFollowUpAt:
-                  createForm.nextFollowUp ||
-                  undefined,
-                notes:
-                  createForm.notes.trim() ||
-                  undefined,
-              }),
+                ),
             },
           );
 
-        const createdLeadApi =
-          extractCreatedLead(
+        const created =
+          extractMutatedLead(
             response,
           );
 
-        if (createdLeadApi) {
-          const createdLeadUi =
-            mapLeadToUi(
-              createdLeadApi,
-            );
-
-          setLeads((prev) => [
-            createdLeadUi,
-            ...prev,
-          ]);
+        if (created) {
+          setLeads(
+            (previous) => [
+              mapLeadToUi(
+                created,
+              ),
+              ...previous,
+            ],
+          );
         } else {
-          /*
-           * The request completed successfully, so do not
-           * report a false creation failure just because a
-           * future API version changes the response shape.
-           */
           await loadLeads();
         }
-
-        setCreateSuccessMessage(
-          'Lead created successfully.',
-        );
 
         setIsCreateModalOpen(
           false,
         );
+
         setCreateForm(
-          initialCreateLeadForm,
+          initialLeadForm,
+        );
+
+        setSuccessMessage(
+          'Lead created successfully.',
         );
       } catch (error) {
         if (
@@ -806,7 +1397,8 @@ export default function LeadsPage() {
               'Failed to create lead.',
           );
         } else if (
-          error instanceof Error
+          error instanceof
+          Error
         ) {
           setCreateError(
             error.message,
@@ -823,6 +1415,287 @@ export default function LeadsPage() {
       }
     };
 
+  /* =======================================================
+     EDIT ACTIONS
+  ======================================================= */
+
+  const openEditModal =
+    useCallback(
+      (lead: Lead) => {
+        setEditingLead(
+          lead,
+        );
+
+        setEditForm(
+          leadToForm(
+            lead,
+          ),
+        );
+
+        setEditError(
+          null,
+        );
+      },
+      [],
+    );
+
+  const closeEditModal =
+    useCallback(() => {
+      if (
+        isSubmittingEdit
+      ) {
+        return;
+      }
+
+      setEditingLead(
+        null,
+      );
+
+      setEditError(
+        null,
+      );
+    }, [
+      isSubmittingEdit,
+    ]);
+
+  const handleEditFieldChange =
+    <
+      K extends keyof LeadFormState,
+    >(
+      key: K,
+      value:
+        LeadFormState[K],
+    ) => {
+      setEditForm(
+        (previous) => ({
+          ...previous,
+          [key]: value,
+        }),
+      );
+    };
+
+  const handleEditLead =
+    async (
+      event:
+        React.FormEvent<HTMLFormElement>,
+    ) => {
+      event.preventDefault();
+
+      if (!editingLead) {
+        return;
+      }
+
+      setEditError(
+        null,
+      );
+
+      const validationError =
+        getFormError(
+          editForm,
+        );
+
+      if (
+        validationError
+      ) {
+        setEditError(
+          validationError,
+        );
+
+        return;
+      }
+
+      setIsSubmittingEdit(
+        true,
+      );
+
+      try {
+        const response =
+          await request<LeadMutationResponse>(
+            `/leads/${editingLead.id}`,
+            {
+              method: 'PATCH',
+
+              headers: {
+                'Content-Type':
+                  'application/json',
+              },
+
+              body:
+                JSON.stringify(
+                  buildLeadPayload(
+                    editForm,
+                    true,
+                  ),
+                ),
+            },
+          );
+
+        const updated =
+          extractMutatedLead(
+            response,
+          );
+
+        if (updated) {
+          const mapped =
+            mapLeadToUi(
+              updated,
+            );
+
+          setLeads(
+            (previous) =>
+              previous.map(
+                (lead) =>
+                  lead.id ===
+                  mapped.id
+                    ? mapped
+                    : lead,
+              ),
+          );
+        } else {
+          await loadLeads();
+        }
+
+        setEditingLead(
+          null,
+        );
+
+        setSuccessMessage(
+          'Lead updated successfully.',
+        );
+      } catch (error) {
+        if (
+          error instanceof
+          ApiError
+        ) {
+          setEditError(
+            error.message ||
+              'Failed to update lead.',
+          );
+        } else if (
+          error instanceof
+          Error
+        ) {
+          setEditError(
+            error.message,
+          );
+        } else {
+          setEditError(
+            'Failed to update lead.',
+          );
+        }
+      } finally {
+        setIsSubmittingEdit(
+          false,
+        );
+      }
+    };
+
+  /* =======================================================
+     DELETE ACTIONS
+  ======================================================= */
+
+  const openDeleteModal =
+    useCallback(
+      (lead: Lead) => {
+        setDeletingLead(
+          lead,
+        );
+
+        setDeleteError(
+          null,
+        );
+      },
+      [],
+    );
+
+  const closeDeleteModal =
+    useCallback(() => {
+      if (isDeleting) {
+        return;
+      }
+
+      setDeletingLead(
+        null,
+      );
+
+      setDeleteError(
+        null,
+      );
+    }, [isDeleting]);
+
+  const handleDeleteLead =
+    async () => {
+      if (!deletingLead) {
+        return;
+      }
+
+      setDeleteError(
+        null,
+      );
+
+      setIsDeleting(
+        true,
+      );
+
+      try {
+        await request<{
+          success: boolean;
+          message: string;
+        }>(
+          `/leads/${deletingLead.id}`,
+          {
+            method: 'DELETE',
+          },
+        );
+
+        setLeads(
+          (previous) =>
+            previous.filter(
+              (lead) =>
+                lead.id !==
+                deletingLead.id,
+            ),
+        );
+
+        setDeletingLead(
+          null,
+        );
+
+        setSuccessMessage(
+          'Lead deleted successfully.',
+        );
+      } catch (error) {
+        if (
+          error instanceof
+          ApiError
+        ) {
+          setDeleteError(
+            error.message ||
+              'Failed to delete lead.',
+          );
+        } else if (
+          error instanceof
+          Error
+        ) {
+          setDeleteError(
+            error.message,
+          );
+        } else {
+          setDeleteError(
+            'Failed to delete lead.',
+          );
+        }
+      } finally {
+        setIsDeleting(
+          false,
+        );
+      }
+    };
+
+  /* =======================================================
+     PAGE
+  ======================================================= */
+
   return (
     <>
       <div
@@ -832,6 +1705,7 @@ export default function LeadsPage() {
         "
       >
         {/* PAGE HEADER */}
+
         <div
           className="
             flex
@@ -839,7 +1713,7 @@ export default function LeadsPage() {
             gap-5
 
             xl:flex-row
-            xl:items-start
+            xl:items-end
             xl:justify-between
           "
         >
@@ -865,6 +1739,7 @@ export default function LeadsPage() {
                   bg-[var(--cf-primary)]
                 "
               />
+
               Sales workspace
             </div>
 
@@ -875,7 +1750,9 @@ export default function LeadsPage() {
                 leading-[1.1]
                 tracking-[-1px]
                 text-[var(--cf-text)]
+
                 sm:text-[38px]
+
                 lg:text-[44px]
                 lg:tracking-[-1.4px]
               "
@@ -909,40 +1786,34 @@ export default function LeadsPage() {
               xl:justify-end
             "
           >
-            <div
-              className="
-                flex
-                flex-wrap
-                gap-2
-              "
-            >
-              <SummaryChip
-                icon={
-                  <UsersRound
-                    size={14}
-                  />
-                }
-                label={`${leads.length} active leads`}
-              />
+            <SummaryChip
+              icon={
+                <UsersRound
+                  size={14}
+                />
+              }
+              label={`${activeLeads.length} active leads`}
+            />
 
-              <SummaryChip
-                icon={
-                  <Sparkles
-                    size={14}
-                  />
-                }
-                label={`${attentionCount} need attention`}
-                primary
-              />
+            <SummaryChip
+              icon={
+                <Sparkles
+                  size={14}
+                />
+              }
+              label={`${attentionCount} need attention`}
+              primary
+            />
 
-              <SummaryChip
-                label={`${formatCurrency(totalValue)} potential`}
-              />
-            </div>
+            <SummaryChip
+              label={`${formatCurrency(totalValue)} potential`}
+            />
           </div>
         </div>
 
-        {createSuccessMessage && (
+        {/* SUCCESS */}
+
+        {successMessage && (
           <div
             className="
               mt-5
@@ -957,99 +1828,57 @@ export default function LeadsPage() {
               text-[var(--cf-success)]
             "
           >
-            {createSuccessMessage}
+            {successMessage}
           </div>
         )}
 
         {/* TOOLBAR */}
-        <div className="mt-8">
+
+        <div
+          className="
+            mt-8
+          "
+        >
           <LeadsToolbar
             search={search}
-            onSearchChange={setSearch}
+            onSearchChange={
+              setSearch
+            }
             filter={filter}
-            onFilterChange={setFilter}
+            onFilterChange={
+              setFilter
+            }
             sort={sort}
-            onSortChange={setSort}
-            resultCount={filteredLeads.length}
-            onAddLead={openCreateModal}
+            onSortChange={
+              setSort
+            }
+            resultCount={
+              filteredLeads.length
+            }
+            onAddLead={
+              openCreateModal
+            }
           />
         </div>
 
         {/* CONTENT */}
-        <div className="mt-4">
+
+        <div
+          className="
+            mt-4
+          "
+        >
           {isLoading ? (
-            <div
-              className="
-                rounded-[16px]
-                border
-                border-[var(--cf-border)]
-                bg-[var(--cf-surface)]
-                px-6
-                py-14
-                text-center
-                text-[15px]
-                text-[var(--cf-text-secondary)]
-              "
-            >
-              Loading leads...
-            </div>
+            <LoadingState />
           ) : pageError ? (
-            <div
-              className="
-                rounded-[16px]
-                border
-                border-[var(--cf-danger)]/20
-                bg-[var(--cf-danger)]/5
-                px-6
-                py-10
-                text-center
-              "
-            >
-              <p
-                className="
-                  text-[15px]
-                  font-medium
-                  text-[var(--cf-text)]
-                "
-              >
-                Failed to load
-                leads
-              </p>
-
-              <p
-                className="
-                  mt-2
-                  text-[14px]
-                  text-[var(--cf-text-secondary)]
-                "
-              >
-                {pageError}
-              </p>
-
-              <button
-                type="button"
-                onClick={() => {
-                  void loadLeads();
-                }}
-                className="
-                  mt-5
-                  inline-flex
-                  h-11
-                  items-center
-                  justify-center
-                  rounded-lg
-                  bg-[var(--cf-primary)]
-                  px-4
-                  text-[14px]
-                  font-semibold
-                  text-white
-                  transition
-                  hover:bg-[var(--cf-primary-hover)]
-                "
-              >
-                Try again
-              </button>
-            </div>
+            <ErrorState
+              message={
+                pageError
+              }
+              onRetry={() => {
+                void loadLeads();
+              }}
+            />
           ) : filteredLeads.length >
             0 ? (
             <>
@@ -1063,6 +1892,12 @@ export default function LeadsPage() {
                   leads={
                     filteredLeads
                   }
+                  onEdit={
+                    openEditModal
+                  }
+                  onDelete={
+                    openDeleteModal
+                  }
                 />
               </div>
 
@@ -1070,6 +1905,7 @@ export default function LeadsPage() {
                 className="
                   grid
                   gap-3
+
                   lg:hidden
                 "
               >
@@ -1079,7 +1915,15 @@ export default function LeadsPage() {
                       key={
                         lead.id
                       }
-                      lead={lead}
+                      lead={
+                        lead
+                      }
+                      onEdit={
+                        openEditModal
+                      }
+                      onDelete={
+                        openDeleteModal
+                      }
                     />
                   ),
                 )}
@@ -1090,23 +1934,29 @@ export default function LeadsPage() {
               search={search}
               onClear={() => {
                 setSearch('');
+
                 setFilter(
                   'all',
                 );
               }}
+              onAddLead={
+                openCreateModal
+              }
             />
           )}
         </div>
       </div>
 
       {/* CREATE MODAL */}
+
       {isCreateModalOpen && (
-        <CreateLeadModal
+        <LeadFormModal
+          mode="create"
           form={createForm}
+          error={createError}
           isSubmitting={
             isSubmittingCreate
           }
-          error={createError}
           onChange={
             handleCreateFieldChange
           }
@@ -1116,6 +1966,50 @@ export default function LeadsPage() {
           onSubmit={
             handleCreateLead
           }
+        />
+      )}
+
+      {/* EDIT MODAL */}
+
+      {editingLead && (
+        <LeadFormModal
+          mode="edit"
+          form={editForm}
+          error={editError}
+          isSubmitting={
+            isSubmittingEdit
+          }
+          onChange={
+            handleEditFieldChange
+          }
+          onClose={
+            closeEditModal
+          }
+          onSubmit={
+            handleEditLead
+          }
+        />
+      )}
+
+      {/* DELETE MODAL */}
+
+      {deletingLead && (
+        <DeleteLeadModal
+          lead={
+            deletingLead
+          }
+          error={
+            deleteError
+          }
+          isDeleting={
+            isDeleting
+          }
+          onClose={
+            closeDeleteModal
+          }
+          onConfirm={() => {
+            void handleDeleteLead();
+          }}
         />
       )}
     </>
@@ -1163,21 +2057,135 @@ function SummaryChip({
       `}
     >
       {icon}
+
       {label}
     </div>
   );
 }
 
 /* =========================================================
-   EMPTY STATE
+   LOADING / ERROR / EMPTY
 ========================================================= */
+
+function LoadingState() {
+  return (
+    <div
+      className="
+        flex
+        min-h-[360px]
+        items-center
+        justify-center
+        rounded-[16px]
+        border
+        border-[var(--cf-border)]
+        bg-[var(--cf-surface)]
+      "
+    >
+      <div
+        className="
+          flex
+          flex-col
+          items-center
+          gap-3
+        "
+      >
+        <div
+          className="
+            h-8
+            w-8
+            animate-spin
+            rounded-full
+            border-[3px]
+            border-[var(--cf-border)]
+            border-t-[var(--cf-primary)]
+          "
+        />
+
+        <p
+          className="
+            text-[14px]
+            text-[var(--cf-text-secondary)]
+          "
+        >
+          Loading leads...
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ErrorState({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div
+      className="
+        rounded-[16px]
+        border
+        border-red-500/20
+        bg-red-500/5
+        px-6
+        py-10
+        text-center
+      "
+    >
+      <p
+        className="
+          text-[15px]
+          font-semibold
+          text-[var(--cf-text)]
+        "
+      >
+        Failed to load leads
+      </p>
+
+      <p
+        className="
+          mt-2
+          text-[14px]
+          text-[var(--cf-text-secondary)]
+        "
+      >
+        {message}
+      </p>
+
+      <button
+        type="button"
+        onClick={onRetry}
+        className="
+          mt-5
+          inline-flex
+          h-11
+          items-center
+          justify-center
+          rounded-lg
+          bg-[var(--cf-primary)]
+          px-4
+          text-[14px]
+          font-semibold
+          text-white
+          transition
+          hover:bg-[var(--cf-primary-hover)]
+        "
+      >
+        Try again
+      </button>
+    </div>
+  );
+}
 
 function EmptyLeadsState({
   search,
   onClear,
+  onAddLead,
 }: {
   search: string;
   onClear: () => void;
+  onAddLead: () => void;
 }) {
   return (
     <div
@@ -1216,9 +2224,9 @@ function EmptyLeadsState({
       <h2
         className="
           mt-5
-          text-[30px]
+          text-[24px]
           font-semibold
-          tracking-[-0.7px]
+          tracking-[-0.5px]
           text-[var(--cf-text)]
         "
       >
@@ -1227,72 +2235,131 @@ function EmptyLeadsState({
 
       <p
         className="
-          mt-3
+          mt-2
           max-w-[440px]
-          text-[15px]
-          leading-7
+          text-[14px]
+          leading-6
           text-[var(--cf-text-secondary)]
         "
       >
         {search
           ? `No leads match “${search}”. Try another search or clear your filters.`
-          : 'There are no leads matching the current filter.'}
+          : 'Your workspace does not have a lead matching this view yet.'}
       </p>
 
-      <button
-        type="button"
-        onClick={onClear}
+      <div
         className="
           mt-6
-          inline-flex
-          h-11
-          items-center
+          flex
+          flex-wrap
           justify-center
-          rounded-lg
-          bg-[var(--cf-primary)]
-          px-5
-          text-[14px]
-          font-semibold
-          text-white
-          transition
-          hover:bg-[var(--cf-primary-hover)]
+          gap-2
         "
       >
-        Clear filters
-      </button>
+        {(search) && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="
+              inline-flex
+              h-11
+              items-center
+              justify-center
+              rounded-lg
+              border
+              border-[var(--cf-border)]
+              bg-[var(--cf-surface)]
+              px-5
+              text-[14px]
+              font-semibold
+              text-[var(--cf-text)]
+              transition
+              hover:bg-[var(--cf-surface-soft)]
+            "
+          >
+            Clear filters
+          </button>
+        )}
+
+        {!search && (
+          <button
+            type="button"
+            onClick={
+              onAddLead
+            }
+            className="
+              inline-flex
+              h-11
+              items-center
+              justify-center
+              rounded-lg
+              bg-[var(--cf-primary)]
+              px-5
+              text-[14px]
+              font-semibold
+              text-white
+              transition
+              hover:bg-[var(--cf-primary-hover)]
+            "
+          >
+            Add your first lead
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
 /* =========================================================
-   CREATE LEAD MODAL
+   LEAD FORM MODAL
 ========================================================= */
 
-function CreateLeadModal({
+function LeadFormModal({
+  mode,
   form,
-  isSubmitting,
   error,
+  isSubmitting,
   onChange,
   onClose,
   onSubmit,
 }: {
-  form: CreateLeadFormState;
-  isSubmitting: boolean;
-  error: string | null;
+  mode:
+    | 'create'
+    | 'edit';
+
+  form:
+    LeadFormState;
+
+  error:
+    string | null;
+
+  isSubmitting:
+    boolean;
+
   onChange: <
-    K extends keyof CreateLeadFormState,
+    K extends keyof LeadFormState,
   >(
     key: K,
-    value: CreateLeadFormState[K],
+    value:
+      LeadFormState[K],
   ) => void;
-  onClose: () => void;
+
+  onClose:
+    () => void;
+
   onSubmit: (
-    event: React.FormEvent<HTMLFormElement>,
+    event:
+      React.FormEvent<HTMLFormElement>,
   ) => Promise<void>;
 }) {
+  const isEdit =
+    mode === 'edit';
+
   return (
     <div
-      onClick={(event) => {
+      onMouseDown={(
+        event,
+      ) => {
         if (
           event.target ===
           event.currentTarget
@@ -1303,7 +2370,7 @@ function CreateLeadModal({
       className="
         fixed
         inset-0
-        z-[120]
+        z-[160]
         flex
         items-center
         justify-center
@@ -1329,7 +2396,6 @@ function CreateLeadModal({
           shadow-[0_30px_80px_rgba(15,23,42,.35)]
         "
       >
-        {/* Header */}
         <div
           className="
             flex
@@ -1355,7 +2421,9 @@ function CreateLeadModal({
                 text-[var(--cf-text-secondary)]
               "
             >
-              New lead
+              {isEdit
+                ? 'Edit lead'
+                : 'New lead'}
             </div>
 
             <h2
@@ -1364,10 +2432,13 @@ function CreateLeadModal({
                 font-semibold
                 tracking-[-0.5px]
                 text-[var(--cf-text)]
+
                 sm:text-[28px]
               "
             >
-              Add lead
+              {isEdit
+                ? 'Update lead'
+                : 'Add lead'}
             </h2>
 
             <p
@@ -1377,20 +2448,23 @@ function CreateLeadModal({
                 text-[14px]
                 leading-6
                 text-[var(--cf-text-secondary)]
+
                 sm:text-[15px]
               "
             >
-              Start with what you
-              know. You can add
-              more context as the
-              opportunity develops.
+              {isEdit
+                ? 'Keep the opportunity information accurate so ClientFlow can recommend the right next step.'
+                : 'Start with what you know. You can add more context as the opportunity develops.'}
             </p>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            disabled={isSubmitting}
+            disabled={
+              isSubmitting
+            }
+            aria-label="Close"
             className="
               flex
               h-10
@@ -1410,11 +2484,12 @@ function CreateLeadModal({
               disabled:opacity-50
             "
           >
-            <X size={18} />
+            <X
+              size={18}
+            />
           </button>
         </div>
 
-        {/* Body */}
         <form
           onSubmit={onSubmit}
           className="
@@ -1441,12 +2516,12 @@ function CreateLeadModal({
                   mb-5
                   rounded-xl
                   border
-                  border-[var(--cf-danger)]/20
-                  bg-[var(--cf-danger)]/5
+                  border-red-500/25
+                  bg-red-500/5
                   px-4
                   py-3
                   text-[14px]
-                  text-[var(--cf-danger)]
+                  text-red-600
                 "
               >
                 {error}
@@ -1457,6 +2532,7 @@ function CreateLeadModal({
               className="
                 grid
                 gap-4
+
                 md:grid-cols-2
               "
             >
@@ -1464,6 +2540,7 @@ function CreateLeadModal({
                 <Label>
                   First name *
                 </Label>
+
                 <Input
                   value={
                     form.firstName
@@ -1485,6 +2562,7 @@ function CreateLeadModal({
                 <Label>
                   Last name
                 </Label>
+
                 <Input
                   value={
                     form.lastName
@@ -1506,6 +2584,7 @@ function CreateLeadModal({
                 <Label>
                   Company *
                 </Label>
+
                 <Input
                   value={
                     form.company
@@ -1527,6 +2606,7 @@ function CreateLeadModal({
                 <Label>
                   Job title
                 </Label>
+
                 <Input
                   value={
                     form.jobTitle
@@ -1548,6 +2628,7 @@ function CreateLeadModal({
                 <Label>
                   Email *
                 </Label>
+
                 <Input
                   type="email"
                   value={
@@ -1570,8 +2651,11 @@ function CreateLeadModal({
                 <Label>
                   Phone
                 </Label>
+
                 <Input
-                  value={form.phone}
+                  value={
+                    form.phone
+                  }
                   onChange={(
                     event,
                   ) =>
@@ -1589,6 +2673,7 @@ function CreateLeadModal({
                 <Label>
                   Website
                 </Label>
+
                 <Input
                   value={
                     form.website
@@ -1610,6 +2695,7 @@ function CreateLeadModal({
                 <Label>
                   Source
                 </Label>
+
                 <Select
                   value={
                     form.source
@@ -1627,14 +2713,21 @@ function CreateLeadModal({
                   <option value="Website">
                     Website
                   </option>
+
                   <option value="Referral">
                     Referral
                   </option>
+
                   <option value="LinkedIn">
                     LinkedIn
                   </option>
+
                   <option value="Outbound">
                     Outbound
+                  </option>
+
+                  <option value="Other">
+                    Other
                   </option>
                 </Select>
               </Field>
@@ -1643,6 +2736,7 @@ function CreateLeadModal({
                 <Label>
                   Estimated value
                 </Label>
+
                 <Input
                   type="number"
                   min="0"
@@ -1667,6 +2761,7 @@ function CreateLeadModal({
                 <Label>
                   Temperature
                 </Label>
+
                 <Select
                   value={
                     form.temperature
@@ -1681,19 +2776,82 @@ function CreateLeadModal({
                     )
                   }
                 >
+                  <option value="Hot">
+                    Hot
+                  </option>
+
                   <option value="Warm">
                     Warm
                   </option>
-                  <option value="Hot">
-                    Hot
+
+                  <option value="Cold">
+                    Cold
                   </option>
                 </Select>
               </Field>
 
-              <Field className="md:col-span-2">
+              {isEdit && (
+                <Field>
+                  <Label>
+                    Stage
+                  </Label>
+
+                  <Select
+                    value={
+                      form.stage
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      onChange(
+                        'stage',
+                        event.target
+                          .value as StageValue,
+                      )
+                    }
+                  >
+                    <option value="New">
+                      New
+                    </option>
+
+                    <option value="Contacted">
+                      Contacted
+                    </option>
+
+                    <option value="Qualified">
+                      Qualified
+                    </option>
+
+                    <option value="Proposal">
+                      Proposal
+                    </option>
+
+                    <option value="Negotiation">
+                      Negotiation
+                    </option>
+
+                    <option value="Won">
+                      Won
+                    </option>
+
+                    <option value="Lost">
+                      Lost
+                    </option>
+                  </Select>
+                </Field>
+              )}
+
+              <Field
+                className={
+                  isEdit
+                    ? ''
+                    : 'md:col-span-2'
+                }
+              >
                 <Label>
                   Next follow-up
                 </Label>
+
                 <Input
                   type="datetime-local"
                   value={
@@ -1711,12 +2869,19 @@ function CreateLeadModal({
                 />
               </Field>
 
-              <Field className="md:col-span-2">
+              <Field
+                className="
+                  md:col-span-2
+                "
+              >
                 <Label>
                   Notes
                 </Label>
+
                 <Textarea
-                  value={form.notes}
+                  value={
+                    form.notes
+                  }
                   onChange={(
                     event,
                   ) =>
@@ -1732,7 +2897,6 @@ function CreateLeadModal({
             </div>
           </div>
 
-          {/* Footer */}
           <div
             className="
               flex
@@ -1751,7 +2915,9 @@ function CreateLeadModal({
             <button
               type="button"
               onClick={onClose}
-              disabled={isSubmitting}
+              disabled={
+                isSubmitting
+              }
               className="
                 inline-flex
                 h-11
@@ -1776,7 +2942,9 @@ function CreateLeadModal({
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={
+                isSubmitting
+              }
               className="
                 inline-flex
                 h-11
@@ -1796,11 +2964,212 @@ function CreateLeadModal({
               "
             >
               {isSubmitting
-                ? 'Creating...'
-                : 'Create lead'}
+                ? isEdit
+                  ? 'Saving...'
+                  : 'Creating...'
+                : isEdit
+                  ? 'Save changes'
+                  : 'Create lead'}
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   DELETE MODAL
+========================================================= */
+
+function DeleteLeadModal({
+  lead,
+  error,
+  isDeleting,
+  onClose,
+  onConfirm,
+}: {
+  lead: Lead;
+  error: string | null;
+  isDeleting: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      onMouseDown={(
+        event,
+      ) => {
+        if (
+          event.target ===
+          event.currentTarget
+        ) {
+          onClose();
+        }
+      }}
+      className="
+        fixed
+        inset-0
+        z-[170]
+        flex
+        items-center
+        justify-center
+        bg-[rgba(10,15,30,0.58)]
+        px-4
+        py-6
+        backdrop-blur-[8px]
+      "
+    >
+      <div
+        className="
+          w-full
+          max-w-[470px]
+          rounded-[22px]
+          border
+          border-white/10
+          bg-[var(--cf-surface)]
+          p-6
+          shadow-[0_30px_80px_rgba(15,23,42,.35)]
+        "
+      >
+        <div
+          className="
+            flex
+            h-12
+            w-12
+            items-center
+            justify-center
+            rounded-2xl
+            bg-red-500/10
+            text-red-600
+          "
+        >
+          <AlertTriangle
+            size={21}
+          />
+        </div>
+
+        <h2
+          className="
+            mt-5
+            text-[22px]
+            font-semibold
+            tracking-[-0.4px]
+            text-[var(--cf-text)]
+          "
+        >
+          Delete this lead?
+        </h2>
+
+        <p
+          className="
+            mt-2
+            text-[14px]
+            leading-6
+            text-[var(--cf-text-secondary)]
+          "
+        >
+          <span
+            className="
+              font-semibold
+              text-[var(--cf-text)]
+            "
+          >
+            {lead.firstName}{' '}
+            {lead.lastName}
+          </span>{' '}
+          from {lead.company} will
+          be permanently removed.
+          This action cannot be
+          undone.
+        </p>
+
+        {error && (
+          <div
+            className="
+              mt-4
+              rounded-xl
+              border
+              border-red-500/20
+              bg-red-500/5
+              px-4
+              py-3
+              text-[13px]
+              text-red-600
+            "
+          >
+            {error}
+          </div>
+        )}
+
+        <div
+          className="
+            mt-6
+            flex
+            flex-col-reverse
+            gap-2
+
+            sm:flex-row
+            sm:justify-end
+          "
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={
+              isDeleting
+            }
+            className="
+              inline-flex
+              h-11
+              items-center
+              justify-center
+              rounded-xl
+              border
+              border-[var(--cf-border)]
+              bg-[var(--cf-surface)]
+              px-5
+              text-[14px]
+              font-semibold
+              text-[var(--cf-text)]
+              transition
+              hover:bg-[var(--cf-surface-soft)]
+              disabled:opacity-50
+            "
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={
+              onConfirm
+            }
+            disabled={
+              isDeleting
+            }
+            className="
+              inline-flex
+              h-11
+              items-center
+              justify-center
+              rounded-xl
+              bg-red-600
+              px-5
+              text-[14px]
+              font-semibold
+              text-white
+              transition
+              hover:bg-red-700
+              disabled:cursor-not-allowed
+              disabled:opacity-60
+            "
+          >
+            {isDeleting
+              ? 'Deleting...'
+              : 'Delete lead'}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1814,7 +3183,8 @@ function Field({
   children,
   className = '',
 }: {
-  children: React.ReactNode;
+  children:
+    React.ReactNode;
   className?: string;
 }) {
   return (
@@ -1829,7 +3199,8 @@ function Field({
 function Label({
   children,
 }: {
-  children: React.ReactNode;
+  children:
+    React.ReactNode;
 }) {
   return (
     <label
@@ -1845,7 +3216,8 @@ function Label({
 }
 
 function Input(
-  props: React.InputHTMLAttributes<HTMLInputElement>,
+  props:
+    React.InputHTMLAttributes<HTMLInputElement>,
 ) {
   return (
     <input
@@ -1875,7 +3247,8 @@ function Input(
 }
 
 function Select(
-  props: React.SelectHTMLAttributes<HTMLSelectElement>,
+  props:
+    React.SelectHTMLAttributes<HTMLSelectElement>,
 ) {
   return (
     <select
@@ -1904,7 +3277,8 @@ function Select(
 }
 
 function Textarea(
-  props: React.TextareaHTMLAttributes<HTMLTextAreaElement>,
+  props:
+    React.TextareaHTMLAttributes<HTMLTextAreaElement>,
 ) {
   return (
     <textarea

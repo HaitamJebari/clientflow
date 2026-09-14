@@ -5,9 +5,16 @@ import {
   Bot,
   Clock3,
   MoreHorizontal,
+  Pencil,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 
+import {
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 /* =========================================================
    TYPES
@@ -20,8 +27,13 @@ export interface Lead {
   lastName: string;
 
   email: string;
-
   company: string;
+
+  jobTitle?: string;
+  phone?: string;
+  website?: string;
+  notes?: string;
+  nextFollowUpAt?: string | null;
 
   initials: string;
 
@@ -46,13 +58,11 @@ export interface Lead {
   source: string;
 
   lastActivity: string;
-
   signal: string;
 
   insight: string;
 
   actionLabel: string;
-
   actionHint: string;
 
   needsAttention: boolean;
@@ -60,11 +70,11 @@ export interface Lead {
   priority: number;
 }
 
-
 interface LeadsTableProps {
   leads: Lead[];
+  onEdit: (lead: Lead) => void;
+  onDelete: (lead: Lead) => void;
 }
-
 
 /* =========================================================
    TABLE
@@ -72,19 +82,17 @@ interface LeadsTableProps {
 
 export function LeadsTable({
   leads,
+  onEdit,
+  onDelete,
 }: LeadsTableProps) {
   return (
     <section
       className="
         overflow-hidden
-
         rounded-[16px]
-
         border
         border-[var(--cf-border)]
-
         bg-[var(--cf-surface)]
-
         shadow-[var(--cf-shadow)]
       "
     >
@@ -96,21 +104,15 @@ export function LeadsTable({
         <table
           className="
             w-full
-            min-w-[1340px]
-
+            min-w-[1180px]
             border-collapse
           "
         >
-          {/* =================================================
-              HEADER
-          ================================================= */}
-
           <thead>
             <tr
               className="
                 border-b
                 border-[var(--cf-border-soft)]
-
                 bg-[var(--cf-surface-soft)]
               "
             >
@@ -155,11 +157,6 @@ export function LeadsTable({
             </tr>
           </thead>
 
-
-          {/* =================================================
-              ROWS
-          ================================================= */}
-
           <tbody>
             {leads.map(
               (
@@ -173,6 +170,8 @@ export function LeadsTable({
                     index ===
                     leads.length - 1
                   }
+                  onEdit={onEdit}
+                  onDelete={onDelete}
                 />
               ),
             )}
@@ -180,33 +179,22 @@ export function LeadsTable({
         </table>
       </div>
 
-
-      {/* ===================================================
-          FOOTER
-      =================================================== */}
-
       <div
         className="
           flex
           items-center
           justify-between
-          gap-4
-
           border-t
           border-[var(--cf-border-soft)]
-
           bg-[var(--cf-surface-soft)]
-
           px-5
-          py-3.5
+          py-3
         "
       >
         <p
           className="
-            text-[12px]
-            font-medium
-
-            text-[var(--cf-text-secondary)]
+            text-[11px]
+            text-[var(--cf-text-muted)]
           "
         >
           Showing {leads.length}{' '}
@@ -215,33 +203,29 @@ export function LeadsTable({
             : 'leads'}
         </p>
 
-
         <div
           className="
             flex
             items-center
             gap-1.5
-
-            text-[11px]
-            font-medium
-
-            text-[var(--cf-text-secondary)]
+            text-[10px]
+            text-[var(--cf-text-muted)]
           "
         >
           <Sparkles
-            size={12}
+            size={11}
             className="
               text-[var(--cf-primary)]
             "
           />
 
-          AI insights are preview data
+          AI insights are preview
+          data
         </div>
       </div>
     </section>
   );
 }
-
 
 /* =========================================================
    TABLE HEADING
@@ -257,27 +241,20 @@ function TableHeading({
     <th
       className="
         whitespace-nowrap
-
         px-4
-        py-4
-
+        py-3.5
         text-left
-
-        text-[11px]
-        font-bold
+        text-[10px]
+        font-semibold
         uppercase
-        tracking-[0.08em]
-
-        text-[var(--cf-text-secondary)]
-
-        xl:text-[12px]
+        tracking-[0.1em]
+        text-[var(--cf-text-muted)]
       "
     >
       {children}
     </th>
   );
 }
-
 
 /* =========================================================
    LEAD ROW
@@ -286,9 +263,13 @@ function TableHeading({
 function LeadRow({
   lead,
   last,
+  onEdit,
+  onDelete,
 }: {
   lead: Lead;
   last: boolean;
+  onEdit: (lead: Lead) => void;
+  onDelete: (lead: Lead) => void;
 }) {
   const value =
     new Intl.NumberFormat(
@@ -296,23 +277,18 @@ function LeadRow({
       {
         style: 'currency',
         currency: 'EUR',
-
         maximumFractionDigits: 0,
       },
     ).format(
       lead.value,
     );
 
-
   return (
     <tr
       className={`
         group
-
         transition-colors
-
         hover:bg-[var(--cf-surface-hover)]
-
         ${
           !last
             ? `
@@ -323,14 +299,10 @@ function LeadRow({
         }
       `}
     >
-      {/* ===================================================
-          LEAD
-      =================================================== */}
-
       <td
         className="
           px-4
-          py-5
+          py-4
         "
       >
         <div
@@ -343,29 +315,22 @@ function LeadRow({
           <div
             className="
               relative
-
               flex
-              h-11
-              w-11
+              h-10
+              w-10
               shrink-0
               items-center
               justify-center
-
               rounded-xl
-
               border
               border-[var(--cf-border)]
-
               bg-[var(--cf-surface-soft)]
-
-              text-[12px]
-              font-bold
-
+              text-[11px]
+              font-semibold
               text-[var(--cf-text-secondary)]
             "
           >
             {lead.initials}
-
 
             {lead.needsAttention && (
               <span
@@ -373,21 +338,16 @@ function LeadRow({
                   absolute
                   -right-1
                   -top-1
-
-                  h-3
-                  w-3
-
+                  h-2.5
+                  w-2.5
                   rounded-full
-
                   border-2
                   border-[var(--cf-surface)]
-
                   bg-[var(--cf-primary)]
                 "
               />
             )}
           </div>
-
 
           <div
             className="
@@ -404,53 +364,38 @@ function LeadRow({
               <p
                 className="
                   truncate
-
-                  text-[15px]
+                  text-[13px]
                   font-semibold
-
                   text-[var(--cf-text)]
-
-                  xl:text-[16px]
                 "
               >
                 {lead.firstName}{' '}
                 {lead.lastName}
               </p>
 
-
-              <TemperatureBadge
+              <TemperatureDot
                 temperature={
                   lead.temperature
                 }
-                compact
               />
             </div>
-
 
             <p
               className="
                 mt-1
-
                 truncate
-
-                text-[13px]
-                font-medium
-
+                text-[11px]
                 text-[var(--cf-text-secondary)]
               "
             >
               {lead.company}
             </p>
 
-
             <p
               className="
-                mt-[3px]
-
+                mt-[2px]
                 truncate
-
-                text-[12px]
-
+                text-[10px]
                 text-[var(--cf-text-muted)]
               "
             >
@@ -460,15 +405,10 @@ function LeadRow({
         </div>
       </td>
 
-
-      {/* ===================================================
-          STAGE
-      =================================================== */}
-
       <td
         className="
           px-4
-          py-5
+          py-4
         "
       >
         <StageBadge
@@ -476,128 +416,100 @@ function LeadRow({
         />
       </td>
 
-
-      {/* ===================================================
-          QUALIFICATION
-      =================================================== */}
-
       <td
         className="
           px-4
-          py-5
+          py-4
         "
       >
         <div
           className="
-            min-w-[120px]
+            min-w-[105px]
           "
         >
-          <QualificationBadge
-            qualification={
-              lead.qualification
-            }
-          />
-
+          <p
+            className="
+              text-[12px]
+              font-medium
+              text-[var(--cf-text)]
+            "
+          >
+            {lead.qualification}
+          </p>
 
           <div
             className="
-              mt-2.5
+              mt-2
+              flex
+              items-center
+              gap-1.5
             "
           >
-            <TemperatureBadge
+            <TemperatureDot
               temperature={
                 lead.temperature
               }
+              showLabel
             />
           </div>
         </div>
       </td>
 
-
-      {/* ===================================================
-          VALUE
-      =================================================== */}
-
       <td
         className="
           px-4
-          py-5
+          py-4
         "
       >
         <span
           className="
             whitespace-nowrap
-
-            text-[15px]
-            font-bold
-
+            text-[14px]
+            font-semibold
             text-[var(--cf-text)]
-
-            xl:text-[16px]
           "
         >
           {value}
         </span>
       </td>
 
-
-      {/* ===================================================
-          SOURCE
-      =================================================== */}
-
       <td
         className="
           px-4
-          py-5
+          py-4
         "
       >
         <span
           className="
             whitespace-nowrap
-
-            text-[13px]
-            font-medium
-
+            text-[12px]
             text-[var(--cf-text-secondary)]
-
-            xl:text-[14px]
           "
         >
           {lead.source}
         </span>
       </td>
 
-
-      {/* ===================================================
-          LAST ACTIVITY
-      =================================================== */}
-
       <td
         className="
           px-4
-          py-5
+          py-4
         "
       >
         <div
           className="
             flex
-            min-w-[125px]
+            min-w-[110px]
             items-center
             gap-2
-
-            text-[12px]
-            font-medium
-
+            text-[11px]
             text-[var(--cf-text-secondary)]
-
-            xl:text-[13px]
           "
         >
           <Clock3
-            size={14}
+            size={13}
             className="
               shrink-0
-
               text-[var(--cf-text-muted)]
             "
           />
@@ -606,22 +518,16 @@ function LeadRow({
         </div>
       </td>
 
-
-      {/* ===================================================
-          AI INSIGHT
-      =================================================== */}
-
       <td
         className="
-          max-w-[300px]
-
+          max-w-[260px]
           px-4
-          py-5
+          py-4
         "
       >
         <div
           className="
-            min-w-[245px]
+            min-w-[210px]
           "
         >
           <div
@@ -632,20 +538,18 @@ function LeadRow({
             "
           >
             <Bot
-              size={14}
+              size={13}
               className="
                 text-[var(--cf-primary)]
               "
             />
 
-
             <span
               className="
-                text-[11px]
-                font-bold
+                text-[10px]
+                font-semibold
                 uppercase
                 tracking-[0.08em]
-
                 text-[var(--cf-primary)]
               "
             >
@@ -653,49 +557,29 @@ function LeadRow({
             </span>
           </div>
 
-
           <p
             className="
-              mt-2
-
+              mt-1.5
               line-clamp-2
-
-              text-[13px]
-              font-medium
-              leading-5
-
+              text-[11px]
+              leading-[18px]
               text-[var(--cf-text-secondary)]
-
-              xl:text-[14px]
-              xl:leading-[22px]
             "
           >
             {lead.insight}
           </p>
 
-
           <div
             className="
-              mt-2.5
-
+              mt-2
               inline-flex
-
               rounded-md
-
-              border
-              border-[var(--cf-primary)]/15
-
               bg-[var(--cf-primary-soft)]
-
-              px-2.5
-              py-1.5
-
-              text-[10px]
-              font-semibold
-
+              px-2
+              py-1
+              text-[9px]
+              font-medium
               text-[var(--cf-primary)]
-
-              xl:text-[11px]
             "
           >
             {lead.signal}
@@ -703,15 +587,10 @@ function LeadRow({
         </div>
       </td>
 
-
-      {/* ===================================================
-          NEXT BEST ACTION
-      =================================================== */}
-
       <td
         className="
           px-4
-          py-5
+          py-4
         "
       >
         <button
@@ -723,30 +602,20 @@ function LeadRow({
           data-tooltip-position="top"
           className="
             group/action
-
             flex
-            min-w-[175px]
+            min-w-[150px]
             items-center
             justify-between
-            gap-3
-
+            gap-2
             rounded-lg
-
             border
             border-[var(--cf-border)]
-
             bg-[var(--cf-surface)]
-
-            px-3.5
-            py-3
-
+            px-3
+            py-2.5
             text-left
-
-            shadow-[var(--cf-shadow)]
-
-            transition-all
-
-            hover:border-[var(--cf-primary)]/35
+            transition
+            hover:border-[var(--cf-primary)]/30
             hover:bg-[var(--cf-primary-soft)]
           "
         >
@@ -754,28 +623,20 @@ function LeadRow({
             <span
               className="
                 block
-
-                text-[13px]
+                text-[11px]
                 font-semibold
-
                 text-[var(--cf-text)]
-
-                xl:text-[14px]
               "
             >
               {lead.actionLabel}
             </span>
 
-
             {lead.needsAttention && (
               <span
                 className="
-                  mt-[3px]
+                  mt-[2px]
                   block
-
-                  text-[10px]
-                  font-semibold
-
+                  text-[9px]
                   text-[var(--cf-primary)]
                 "
               >
@@ -784,16 +645,12 @@ function LeadRow({
             )}
           </div>
 
-
           <ArrowRight
-            size={14}
+            size={13}
             className="
               shrink-0
-
               text-[var(--cf-text-muted)]
-
               transition-transform
-
               group-hover/action:translate-x-[2px]
               group-hover/action:text-[var(--cf-primary)]
             "
@@ -801,162 +658,87 @@ function LeadRow({
         </button>
       </td>
 
-
-      {/* ===================================================
-          MORE
-      =================================================== */}
-
       <td
         className="
           px-3
-          py-5
+          py-4
         "
       >
-        <button
-          type="button"
-          aria-label={`More options for ${lead.company}`}
-          data-tooltip={`More options for ${lead.company}`}
-          data-tooltip-position="left"
-          className="
-            flex
-            h-10
-            w-10
-            items-center
-            justify-center
-
-            rounded-lg
-
-            text-[var(--cf-text-secondary)]
-
-            transition
-
-            hover:bg-[var(--cf-surface-soft)]
-            hover:text-[var(--cf-text)]
-          "
-        >
-          <MoreHorizontal
-            size={18}
-          />
-        </button>
+        <LeadActionsMenu
+          lead={lead}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
       </td>
     </tr>
   );
 }
 
-
 /* =========================================================
-   TEMPERATURE BADGE
+   TEMPERATURE
 ========================================================= */
 
-export function TemperatureBadge({
+function TemperatureDot({
   temperature,
-  compact = false,
+  showLabel = false,
 }: {
   temperature:
-    Lead['temperature'];
+    | 'Hot'
+    | 'Warm'
+    | 'Cold';
 
-  compact?: boolean;
+  showLabel?: boolean;
 }) {
   const styles =
     temperature === 'Hot'
       ? `
-        border-red-500/30
-        bg-red-500/12
-        text-red-600
-
-        dark:border-red-400/30
-        dark:bg-red-400/10
-        dark:text-red-300
+        bg-red-500
       `
       : temperature ===
           'Warm'
         ? `
-          border-amber-500/30
-          bg-amber-500/14
-          text-amber-700
-
-          dark:border-amber-400/30
-          dark:bg-amber-400/10
-          dark:text-amber-300
+          bg-amber-500
         `
         : `
-          border-sky-500/30
-          bg-sky-500/12
-          text-sky-700
-
-          dark:border-sky-400/30
-          dark:bg-sky-400/10
-          dark:text-sky-300
+          bg-sky-500
         `;
-
-
-  const dot =
-    temperature === 'Hot'
-      ? 'bg-red-500'
-      : temperature ===
-          'Warm'
-        ? 'bg-amber-500'
-        : 'bg-sky-500';
-
 
   return (
     <span
-      className={`
+      className="
         inline-flex
         items-center
         gap-1.5
-
-        whitespace-nowrap
-
-        rounded-full
-
-        border
-
-        font-bold
-
-        ${styles}
-
-        ${
-          compact
-            ? `
-              px-2
-              py-1
-
-              text-[10px]
-            `
-            : `
-              px-2.5
-              py-1.5
-
-              text-[11px]
-            `
-        }
-      `}
+      "
     >
       <span
         className={`
-          h-2
-          w-2
-
-          shrink-0
-
+          h-1.5
+          w-1.5
           rounded-full
-
-          ${dot}
+          ${styles}
         `}
       />
 
-      {temperature}
+      {showLabel && (
+        <span
+          className="
+            text-[10px]
+            text-[var(--cf-text-muted)]
+          "
+        >
+          {temperature}
+        </span>
+      )}
     </span>
   );
 }
 
-
 /* =========================================================
-   STAGE BADGE
+   STAGE
 ========================================================= */
 
-export function StageBadge({
+function StageBadge({
   stage,
 }: {
   stage:
@@ -965,63 +747,46 @@ export function StageBadge({
   const styles =
     stage === 'Proposal'
       ? `
-        border-blue-500/25
-        bg-blue-500/12
-        text-blue-700
-
-        dark:border-blue-400/25
-        dark:bg-blue-400/10
-        dark:text-blue-300
+        bg-[var(--cf-primary-soft)]
+        text-[var(--cf-primary)]
       `
       : stage ===
           'Negotiation'
         ? `
-          border-violet-500/25
-          bg-violet-500/12
-          text-violet-700
-
-          dark:border-violet-400/25
-          dark:bg-violet-400/10
-          dark:text-violet-300
+          bg-[var(--cf-warning-soft)]
+          text-[var(--cf-warning)]
         `
         : stage ===
             'Qualified'
           ? `
-            border-emerald-500/25
-            bg-emerald-500/12
-            text-emerald-700
-
-            dark:border-emerald-400/25
-            dark:bg-emerald-400/10
-            dark:text-emerald-300
+            bg-[var(--cf-success-soft)]
+            text-[var(--cf-success)]
           `
-          : `
-            border-[var(--cf-border)]
-
-            bg-[var(--cf-surface-soft)]
-
-            text-[var(--cf-text-secondary)]
-          `;
-
+          : stage === 'Won'
+            ? `
+              bg-emerald-500/10
+              text-emerald-600
+            `
+            : stage === 'Lost'
+              ? `
+                bg-red-500/10
+                text-red-600
+              `
+              : `
+                bg-[var(--cf-surface-soft)]
+                text-[var(--cf-text-secondary)]
+              `;
 
   return (
     <span
       className={`
         inline-flex
-        items-center
-
         whitespace-nowrap
-
         rounded-full
-
-        border
-
         px-2.5
         py-1.5
-
-        text-[11px]
-        font-bold
-
+        text-[10px]
+        font-semibold
         ${styles}
       `}
     >
@@ -1032,70 +797,266 @@ export function StageBadge({
 
 
 /* =========================================================
-   QUALIFICATION BADGE
+   LEAD ACTIONS MENU
 ========================================================= */
 
-export function QualificationBadge({
-  qualification,
+function LeadActionsMenu({
+  lead,
+  onEdit,
+  onDelete,
 }: {
-  qualification: string;
+  lead: Lead;
+  onEdit: (lead: Lead) => void;
+  onDelete: (lead: Lead) => void;
 }) {
-  const normalized =
-    qualification.toLowerCase();
+  const buttonRef =
+    useRef<HTMLButtonElement | null>(
+      null,
+    );
 
+  const menuRef =
+    useRef<HTMLDivElement | null>(
+      null,
+    );
 
-  const styles =
-    normalized.includes(
-      'strong',
-    )
-      ? `
-        border-emerald-500/25
-        bg-emerald-500/10
-        text-emerald-700
+  const [
+    isOpen,
+    setIsOpen,
+  ] = useState(false);
 
-        dark:text-emerald-300
-      `
-      : normalized.includes(
-            'good',
-          )
-        ? `
-          border-blue-500/25
-          bg-blue-500/10
-          text-blue-700
+  const [
+    position,
+    setPosition,
+  ] = useState({
+    top: 0,
+    left: 0,
+  });
 
-          dark:text-blue-300
-        `
-        : `
-          border-amber-500/25
-          bg-amber-500/10
-          text-amber-700
+  const openMenu = () => {
+    const rect =
+      buttonRef.current?.getBoundingClientRect();
 
-          dark:text-amber-300
-        `;
+    if (!rect) {
+      return;
+    }
 
+    const width = 190;
+    const estimatedHeight = 112;
+
+    const left = Math.min(
+      window.innerWidth - width - 12,
+      Math.max(
+        12,
+        rect.right - width,
+      ),
+    );
+
+    const shouldOpenAbove =
+      rect.bottom +
+        estimatedHeight +
+        12 >
+      window.innerHeight;
+
+    const top = shouldOpenAbove
+      ? Math.max(
+          12,
+          rect.top -
+            estimatedHeight -
+            8,
+        )
+      : rect.bottom + 8;
+
+    setPosition({
+      top,
+      left,
+    });
+
+    setIsOpen(true);
+  };
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const handlePointerDown = (
+      event: MouseEvent,
+    ) => {
+      const target =
+        event.target as Node;
+
+      if (
+        menuRef.current?.contains(
+          target,
+        ) ||
+        buttonRef.current?.contains(
+          target,
+        )
+      ) {
+        return;
+      }
+
+      setIsOpen(false);
+    };
+
+    const closeMenu = () => {
+      setIsOpen(false);
+    };
+
+    document.addEventListener(
+      'mousedown',
+      handlePointerDown,
+    );
+
+    window.addEventListener(
+      'resize',
+      closeMenu,
+    );
+
+    window.addEventListener(
+      'scroll',
+      closeMenu,
+      true,
+    );
+
+    return () => {
+      document.removeEventListener(
+        'mousedown',
+        handlePointerDown,
+      );
+
+      window.removeEventListener(
+        'resize',
+        closeMenu,
+      );
+
+      window.removeEventListener(
+        'scroll',
+        closeMenu,
+        true,
+      );
+    };
+  }, [isOpen]);
 
   return (
-    <span
-      className={`
-        inline-flex
-        items-center
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-label={`More options for ${lead.company}`}
+        aria-expanded={isOpen}
+        onClick={() => {
+          if (isOpen) {
+            setIsOpen(false);
+          } else {
+            openMenu();
+          }
+        }}
+        className="
+          flex
+          h-9
+          w-9
+          shrink-0
+          items-center
+          justify-center
+          rounded-lg
+          text-[var(--cf-text-muted)]
+          transition
+          hover:bg-[var(--cf-surface-soft)]
+          hover:text-[var(--cf-text)]
+        "
+      >
+        <MoreHorizontal
+          size={17}
+        />
+      </button>
 
-        whitespace-nowrap
+      {isOpen && (
+        <div
+          ref={menuRef}
+          role="menu"
+          style={{
+            top: position.top,
+            left: position.left,
+          }}
+          className="
+            fixed
+            z-[180]
+            w-[190px]
+            overflow-hidden
+            rounded-xl
+            border
+            border-[var(--cf-border)]
+            bg-[var(--cf-surface)]
+            p-1.5
+            shadow-[0_18px_45px_rgba(15,23,42,.20)]
+          "
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setIsOpen(false);
+              onEdit(lead);
+            }}
+            className="
+              flex
+              w-full
+              items-center
+              gap-2.5
+              rounded-lg
+              px-3
+              py-2.5
+              text-left
+              text-[13px]
+              font-medium
+              text-[var(--cf-text)]
+              transition
+              hover:bg-[var(--cf-surface-soft)]
+            "
+          >
+            <Pencil
+              size={15}
+              className="
+                text-[var(--cf-text-secondary)]
+              "
+            />
 
-        rounded-lg
+            Edit lead
+          </button>
 
-        border
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setIsOpen(false);
+              onDelete(lead);
+            }}
+            className="
+              mt-1
+              flex
+              w-full
+              items-center
+              gap-2.5
+              rounded-lg
+              px-3
+              py-2.5
+              text-left
+              text-[13px]
+              font-medium
+              text-red-600
+              transition
+              hover:bg-red-500/10
+            "
+          >
+            <Trash2
+              size={15}
+            />
 
-        px-2.5
-        py-1.5
-
-        text-[11px]
-        font-bold
-
-        ${styles}
-      `}
-    >
-      {qualification}
-    </span>
+            Delete lead
+          </button>
+        </div>
+      )}
+    </>
   );
 }
