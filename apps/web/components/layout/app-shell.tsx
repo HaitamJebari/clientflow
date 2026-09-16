@@ -9,6 +9,7 @@ import {
 } from 'next/navigation';
 
 import {
+  useCallback,
   useEffect,
   useState,
 } from 'react';
@@ -16,7 +17,6 @@ import {
 import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
 import { useAuth } from '@/components/providers/auth-provider';
-
 
 export function AppShell({
   children,
@@ -28,20 +28,20 @@ export function AppShell({
 
   const {
     status,
+    request,
   } = useAuth();
-
 
   const [
     mobileSidebarOpen,
     setMobileSidebarOpen,
-  ] = useState(false);
-
+  ] =
+    useState(false);
 
   const [
     sidebarCollapsed,
     setSidebarCollapsed,
-  ] = useState(false);
-
+  ] =
+    useState(false);
 
   /* =========================================================
      RESTORE SIDEBAR STATE
@@ -53,7 +53,6 @@ export function AppShell({
         'clientflow-sidebar-collapsed',
       );
 
-
     if (
       saved === 'true'
     ) {
@@ -62,7 +61,6 @@ export function AppShell({
       );
     }
   }, []);
-
 
   /* =========================================================
      AUTH GUARD
@@ -82,6 +80,62 @@ export function AppShell({
     status,
   ]);
 
+  /* =========================================================
+     WARM THE MOST COMMON DATA IN THE BACKGROUND
+  ========================================================= */
+
+  useEffect(() => {
+    if (
+      status !==
+      'authenticated'
+    ) {
+      return;
+    }
+
+    /*
+     * Wait until the first visible page has had time to render.
+     * apiRequest performs request de-duplication, so if the current
+     * page already requested one of these URLs this costs no duplicate
+     * network request.
+     *
+     * The data is stored only in a short-lived in-memory cache.
+     */
+    const timer =
+      window.setTimeout(
+        () => {
+          if (
+            document.visibilityState !==
+            'visible'
+          ) {
+            return;
+          }
+
+          void Promise.allSettled([
+            request(
+              '/leads/summary/overview',
+            ),
+
+            request(
+              '/leads?page=1&pageSize=20&filter=all&sort=priority',
+            ),
+
+            request(
+              '/leads/pipeline/board?limitPerStage=20',
+            ),
+          ]);
+        },
+        700,
+      );
+
+    return () => {
+      window.clearTimeout(
+        timer,
+      );
+    };
+  }, [
+    request,
+    status,
+  ]);
 
   /* =========================================================
      MOBILE BODY LOCK
@@ -94,15 +148,12 @@ export function AppShell({
       return;
     }
 
-
     const oldOverflow =
       document.body.style
         .overflow;
 
-
     document.body.style.overflow =
       'hidden';
-
 
     return () => {
       document.body.style.overflow =
@@ -112,19 +163,23 @@ export function AppShell({
     mobileSidebarOpen,
   ]);
 
-
   /* =========================================================
      ESCAPE CLOSES MOBILE SIDEBAR
   ========================================================= */
 
   useEffect(() => {
+    if (
+      !mobileSidebarOpen
+    ) {
+      return;
+    }
+
     function handleKeyDown(
       event: KeyboardEvent,
     ) {
       if (
         event.key ===
-          'Escape' &&
-        mobileSidebarOpen
+        'Escape'
       ) {
         setMobileSidebarOpen(
           false,
@@ -132,12 +187,10 @@ export function AppShell({
       }
     }
 
-
     window.addEventListener(
       'keydown',
       handleKeyDown,
     );
-
 
     return () => {
       window.removeEventListener(
@@ -149,36 +202,48 @@ export function AppShell({
     mobileSidebarOpen,
   ]);
 
-
   /* =========================================================
-     COLLAPSE
+     STABLE SHELL CALLBACKS
   ========================================================= */
 
-  function toggleSidebar() {
-    setSidebarCollapsed(
-      (current) => {
-        const next =
-          !current;
+  const openMobileSidebar =
+    useCallback(() => {
+      setMobileSidebarOpen(
+        true,
+      );
+    }, []);
 
+  const closeMobileSidebar =
+    useCallback(() => {
+      setMobileSidebarOpen(
+        false,
+      );
+    }, []);
 
-        localStorage.setItem(
-          'clientflow-sidebar-collapsed',
-          String(next),
-        );
+  const toggleSidebar =
+    useCallback(() => {
+      setSidebarCollapsed(
+        (current) => {
+          const next =
+            !current;
 
+          localStorage.setItem(
+            'clientflow-sidebar-collapsed',
+            String(next),
+          );
 
-        return next;
-      },
-    );
-  }
-
+          return next;
+        },
+      );
+    }, []);
 
   /* =========================================================
      LOADING
   ========================================================= */
 
   if (
-    status === 'loading'
+    status ===
+    'loading'
   ) {
     return (
       <div
@@ -249,14 +314,12 @@ export function AppShell({
     );
   }
 
-
   if (
     status !==
     'authenticated'
   ) {
     return null;
   }
-
 
   /* =========================================================
      APPLICATION
@@ -277,26 +340,15 @@ export function AppShell({
         duration-200
       "
     >
-      {/* =====================================================
-          TOPBAR
-
-          Full viewport width.
-          Sidebar sits ABOVE it because:
-          Topbar  = z-30
-          Sidebar = z-50
-      ====================================================== */}
-
       <Topbar
         sidebarCollapsed={
           sidebarCollapsed
         }
-        onOpenMobileSidebar={() =>
-          setMobileSidebarOpen(
-            true,
-          )
+        onOpenMobileSidebar={
+          openMobileSidebar
         }
       />
-      {/* Mobile topbar spacer */}
+
       <div
         className="
           h-[64px]
@@ -308,10 +360,6 @@ export function AppShell({
         "
       />
 
-      {/* =====================================================
-          SIDEBAR
-      ====================================================== */}
-
       <Sidebar
         collapsed={
           sidebarCollapsed
@@ -322,21 +370,10 @@ export function AppShell({
         mobileOpen={
           mobileSidebarOpen
         }
-        onMobileClose={() =>
-          setMobileSidebarOpen(
-            false,
-          )
+        onMobileClose={
+          closeMobileSidebar
         }
       />
-
-
-      {/* =====================================================
-          PAGE CONTENT
-
-          Only PAGE CONTENT is offset.
-
-          Topbar itself is NOT inside this container anymore.
-      ====================================================== */}
 
       <div
         className={`

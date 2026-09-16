@@ -18,6 +18,7 @@ import { JwtPayload } from '../types/jwt-payload.type';
 
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { QueryLeadsDto } from './dto/query-leads.dto';
+import { QueryPipelineDto } from './dto/query-pipeline.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { LeadsService } from './leads.service';
 
@@ -48,6 +49,37 @@ export class LeadsController {
     return this.leadsService.create(
       request.user.organizationId,
       dto,
+    );
+  }
+
+  /*
+   * Static multi-segment routes intentionally live before /:id.
+   * They cannot be mistaken for a lead id and let large pages
+   * request purpose-built backend data instead of downloading
+   * entire lead collections.
+   */
+
+  @Get('summary/overview')
+  getSummary(
+    @Req()
+    request: AuthenticatedRequest,
+  ) {
+    return this.leadsService.getSummary(
+      request.user.organizationId,
+    );
+  }
+
+  @Get('pipeline/board')
+  getPipelineBoard(
+    @Req()
+    request: AuthenticatedRequest,
+
+    @Query()
+    query: QueryPipelineDto,
+  ): ReturnType<LeadsService['findPipelineBoard']> {
+    return this.leadsService.findPipelineBoard(
+      request.user.organizationId,
+      query,
     );
   }
 

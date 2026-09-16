@@ -12,13 +12,196 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { QueryLeadsDto } from './dto/query-leads.dto';
+import { QueryPipelineDto } from './dto/query-pipeline.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
+
+const leadListSelect = {
+  id: true,
+
+  firstName: true,
+  lastName: true,
+
+  email: true,
+  phone: true,
+
+  company: true,
+  jobTitle: true,
+  website: true,
+
+  source: true,
+
+  stage: true,
+  temperature: true,
+  qualification: true,
+
+  valueCents: true,
+  currency: true,
+
+  notes: true,
+
+  lastActivityAt: true,
+  lastContactedAt: true,
+  nextFollowUpAt: true,
+
+  aiSummary: true,
+  aiNextBestAction: true,
+
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
+const pipelineLeadSelect = {
+  id: true,
+
+  firstName: true,
+  lastName: true,
+
+  email: true,
+
+  company: true,
+  jobTitle: true,
+
+  source: true,
+
+  stage: true,
+  temperature: true,
+  qualification: true,
+
+  valueCents: true,
+  currency: true,
+
+  lastActivityAt: true,
+  nextFollowUpAt: true,
+
+  aiNextBestAction: true,
+
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
+const pipelineStages = [
+  LeadStage.NEW,
+  LeadStage.CONTACTED,
+  LeadStage.QUALIFIED,
+  LeadStage.PROPOSAL,
+  LeadStage.NEGOTIATION,
+  LeadStage.WON,
+  LeadStage.LOST,
+] as const;
+
+
+interface LeadSummaryRow {
+  activeCount: number;
+  attentionCount: number;
+  potentialValueCents: number;
+}
+
+interface PipelineStageStatRow {
+  stage: LeadStage;
+  count: number;
+  totalValueCents: number;
+}
+
+interface PipelineLeadRow {
+  id: string;
+
+  firstName: string;
+  lastName: string | null;
+
+  email: string | null;
+
+  company: string | null;
+  jobTitle: string | null;
+
+  source: string | null;
+
+  stage: LeadStage;
+
+  temperature:
+    | LeadTemperature
+    | null;
+
+  qualification:
+    | 'UNASSESSED'
+    | 'STRONG_FIT'
+    | 'GOOD_FIT'
+    | 'WEAK_FIT'
+    | 'UNQUALIFIED';
+
+  valueCents: number | null;
+  currency: string;
+
+  lastActivityAt: Date | null;
+  nextFollowUpAt: Date | null;
+
+  aiNextBestAction: string | null;
+
+  createdAt: Date;
+  updatedAt: Date;
+
+  pipelineRank: number;
+}
 
 @Injectable()
 export class LeadsService {
   constructor(
     private readonly prisma: PrismaService,
   ) {}
+
+  private buildSearchWhere(
+    search: string,
+  ) {
+    if (!search) {
+      return {};
+    }
+
+    return {
+      OR: [
+        {
+          firstName: {
+            contains: search,
+            mode: 'insensitive' as const,
+          },
+        },
+        {
+          lastName: {
+            contains: search,
+            mode: 'insensitive' as const,
+          },
+        },
+        {
+          email: {
+            contains: search,
+            mode: 'insensitive' as const,
+          },
+        },
+        {
+          phone: {
+            contains: search,
+            mode: 'insensitive' as const,
+          },
+        },
+        {
+          company: {
+            contains: search,
+            mode: 'insensitive' as const,
+          },
+        },
+        {
+          jobTitle: {
+            contains: search,
+            mode: 'insensitive' as const,
+          },
+        },
+        {
+          source: {
+            contains: search,
+            mode: 'insensitive' as const,
+          },
+        },
+      ],
+    };
+  }
 
   async create(
     organizationId: string,
@@ -60,57 +243,15 @@ export class LeadsService {
     const now =
       new Date();
 
+    const searchWhere =
+      this.buildSearchWhere(
+        search,
+      );
+
     const where = {
       organizationId,
 
-      ...(search
-        ? {
-            OR: [
-              {
-                firstName: {
-                  contains: search,
-                  mode: 'insensitive' as const,
-                },
-              },
-              {
-                lastName: {
-                  contains: search,
-                  mode: 'insensitive' as const,
-                },
-              },
-              {
-                email: {
-                  contains: search,
-                  mode: 'insensitive' as const,
-                },
-              },
-              {
-                phone: {
-                  contains: search,
-                  mode: 'insensitive' as const,
-                },
-              },
-              {
-                company: {
-                  contains: search,
-                  mode: 'insensitive' as const,
-                },
-              },
-              {
-                jobTitle: {
-                  contains: search,
-                  mode: 'insensitive' as const,
-                },
-              },
-              {
-                source: {
-                  contains: search,
-                  mode: 'insensitive' as const,
-                },
-              },
-            ],
-          }
-        : {}),
+      ...searchWhere,
 
       ...(filter === 'hot'
         ? {
@@ -204,66 +345,29 @@ export class LeadsService {
                 },
               ];
 
-    const activeWhere = {
-      organizationId,
-
-      stage: {
-        notIn: [
-          LeadStage.WON,
-          LeadStage.LOST,
-        ],
-      },
-    };
-
-    const attentionWhere = {
-      ...activeWhere,
-
-      OR: [
-        {
-          temperature:
-            LeadTemperature.HOT,
-        },
-        {
-          nextFollowUpAt: {
-            lte: now,
-          },
-        },
-      ],
-    };
-
+    /*
+     * Keep the list request focused:
+     * - one paginated data query
+     * - one filtered count query
+     *
+     * Organization-wide summary numbers live in a separate endpoint,
+     * so typing in search does not repeatedly recalculate the same KPIs.
+     */
     const [
       leads,
       total,
-      activeCount,
-      attentionCount,
-      potentialValue,
     ] =
-      await this.prisma.$transaction([
+      await Promise.all([
         this.prisma.lead.findMany({
           where,
           orderBy,
           skip,
           take: pageSize,
+          select: leadListSelect,
         }),
 
         this.prisma.lead.count({
           where,
-        }),
-
-        this.prisma.lead.count({
-          where: activeWhere,
-        }),
-
-        this.prisma.lead.count({
-          where: attentionWhere,
-        }),
-
-        this.prisma.lead.aggregate({
-          where: activeWhere,
-
-          _sum: {
-            valueCents: true,
-          },
         }),
       ]);
 
@@ -286,15 +390,481 @@ export class LeadsService {
         hasNextPage:
           page < totalPages,
       },
+    };
+  }
 
+  async getSummary(
+    organizationId: string,
+  ) {
+    /*
+     * One PostgreSQL aggregate query replaces three independent
+     * count/sum queries.
+     */
+    const rows =
+      await this.prisma.$queryRawUnsafe<
+        LeadSummaryRow[]
+      >(
+        `
+          SELECT
+            COUNT(*) FILTER (
+              WHERE "stage" NOT IN ('WON', 'LOST')
+            )::int AS "activeCount",
+
+            COUNT(*) FILTER (
+              WHERE
+                "stage" NOT IN ('WON', 'LOST')
+                AND (
+                  "temperature" = 'HOT'
+                  OR (
+                    "nextFollowUpAt" IS NOT NULL
+                    AND "nextFollowUpAt" <= NOW()
+                  )
+                )
+            )::int AS "attentionCount",
+
+            COALESCE(
+              SUM("valueCents") FILTER (
+                WHERE "stage" NOT IN ('WON', 'LOST')
+              ),
+              0
+            )::double precision AS "potentialValueCents"
+
+          FROM "leads"
+
+          WHERE "organizationId" = $1
+        `,
+        organizationId,
+      );
+
+    const summary =
+      rows[0] ?? {
+        activeCount: 0,
+        attentionCount: 0,
+        potentialValueCents: 0,
+      };
+
+    return {
+      activeCount:
+        Number(
+          summary.activeCount,
+        ),
+
+      attentionCount:
+        Number(
+          summary.attentionCount,
+        ),
+
+      potentialValueCents:
+        Number(
+          summary.potentialValueCents,
+        ),
+
+      currency: 'EUR',
+    };
+  }
+
+  async findPipelineBoard(
+    organizationId: string,
+    query: QueryPipelineDto,
+  ) {
+    const search =
+      query.search?.trim() ?? '';
+
+    const limitPerStage =
+      query.limitPerStage ?? 20;
+
+    /*
+     * This endpoint is intentionally optimized for the Kanban board:
+     *
+     * 1) one GROUP BY query for the real stage counts/value totals
+     * 2) one PostgreSQL window-function query that returns only the
+     *    top N cards from EACH stage
+     *
+     * That replaces the previous 1 + 7-query approach.
+     */
+    let stageStats:
+      PipelineStageStatRow[];
+
+    let pipelineRows:
+      PipelineLeadRow[];
+
+    if (search) {
+      const searchPattern =
+        `%${search}%`;
+
+      [
+        stageStats,
+        pipelineRows,
+      ] =
+        await Promise.all([
+          this.prisma.$queryRawUnsafe<
+            PipelineStageStatRow[]
+          >(
+            `
+              SELECT
+                "stage"::text AS "stage",
+                COUNT(*)::int AS "count",
+                COALESCE(
+                  SUM("valueCents"),
+                  0
+                )::double precision AS "totalValueCents"
+
+              FROM "leads"
+
+              WHERE
+                "organizationId" = $1
+                AND (
+                  "firstName" ILIKE $2
+                  OR "lastName" ILIKE $2
+                  OR "email" ILIKE $2
+                  OR "phone" ILIKE $2
+                  OR "company" ILIKE $2
+                  OR "jobTitle" ILIKE $2
+                  OR "source" ILIKE $2
+                )
+
+              GROUP BY "stage"
+            `,
+            organizationId,
+            searchPattern,
+          ),
+
+          this.prisma.$queryRawUnsafe<
+            PipelineLeadRow[]
+          >(
+            `
+              WITH ranked AS (
+                SELECT
+                  "id",
+                  "firstName",
+                  "lastName",
+                  "email",
+                  "company",
+                  "jobTitle",
+                  "source",
+
+                  "stage",
+                  "temperature",
+                  "qualification",
+
+                  "valueCents",
+                  "currency",
+
+                  "lastActivityAt",
+                  "nextFollowUpAt",
+
+                  "aiNextBestAction",
+
+                  "createdAt",
+                  "updatedAt",
+
+                  ROW_NUMBER() OVER (
+                    PARTITION BY "stage"
+                    ORDER BY
+                      "valueCents" DESC NULLS LAST,
+                      "updatedAt" DESC
+                  )::int AS "pipelineRank"
+
+                FROM "leads"
+
+                WHERE
+                  "organizationId" = $1
+                  AND (
+                    "firstName" ILIKE $2
+                    OR "lastName" ILIKE $2
+                    OR "email" ILIKE $2
+                    OR "phone" ILIKE $2
+                    OR "company" ILIKE $2
+                    OR "jobTitle" ILIKE $2
+                    OR "source" ILIKE $2
+                  )
+              )
+
+              SELECT *
+              FROM ranked
+
+              WHERE "pipelineRank" <= $3
+
+              ORDER BY
+                "stage",
+                "pipelineRank"
+            `,
+            organizationId,
+            searchPattern,
+            limitPerStage,
+          ),
+        ]);
+    } else {
+      [
+        stageStats,
+        pipelineRows,
+      ] =
+        await Promise.all([
+          this.prisma.$queryRawUnsafe<
+            PipelineStageStatRow[]
+          >(
+            `
+              SELECT
+                "stage"::text AS "stage",
+                COUNT(*)::int AS "count",
+                COALESCE(
+                  SUM("valueCents"),
+                  0
+                )::double precision AS "totalValueCents"
+
+              FROM "leads"
+
+              WHERE
+                "organizationId" = $1
+
+              GROUP BY "stage"
+            `,
+            organizationId,
+          ),
+
+          this.prisma.$queryRawUnsafe<
+            PipelineLeadRow[]
+          >(
+            `
+              WITH ranked AS (
+                SELECT
+                  "id",
+                  "firstName",
+                  "lastName",
+                  "email",
+                  "company",
+                  "jobTitle",
+                  "source",
+
+                  "stage",
+                  "temperature",
+                  "qualification",
+
+                  "valueCents",
+                  "currency",
+
+                  "lastActivityAt",
+                  "nextFollowUpAt",
+
+                  "aiNextBestAction",
+
+                  "createdAt",
+                  "updatedAt",
+
+                  ROW_NUMBER() OVER (
+                    PARTITION BY "stage"
+                    ORDER BY
+                      "valueCents" DESC NULLS LAST,
+                      "updatedAt" DESC
+                  )::int AS "pipelineRank"
+
+                FROM "leads"
+
+                WHERE
+                  "organizationId" = $1
+              )
+
+              SELECT *
+              FROM ranked
+
+              WHERE "pipelineRank" <= $2
+
+              ORDER BY
+                "stage",
+                "pipelineRank"
+            `,
+            organizationId,
+            limitPerStage,
+          ),
+        ]);
+    }
+
+    const statsByStage =
+      new Map(
+        stageStats.map(
+          (item) => [
+            item.stage,
+            {
+              count:
+                Number(
+                  item.count,
+                ),
+
+              totalValueCents:
+                Number(
+                  item.totalValueCents,
+                ),
+            },
+          ],
+        ),
+      );
+
+    const rowsByStage =
+      new Map<
+        LeadStage,
+        PipelineLeadRow[]
+      >();
+
+    for (
+      const stage of
+      pipelineStages
+    ) {
+      rowsByStage.set(
+        stage,
+        [],
+      );
+    }
+
+    for (
+      const row of
+      pipelineRows
+    ) {
+      const bucket =
+        rowsByStage.get(
+          row.stage,
+        );
+
+      if (bucket) {
+        bucket.push(
+          row,
+        );
+      }
+    }
+
+    const getStats = (
+      stage: LeadStage,
+    ) =>
+      statsByStage.get(
+        stage,
+      ) ?? {
+        count: 0,
+        totalValueCents: 0,
+      };
+
+    const openStages = [
+      LeadStage.NEW,
+      LeadStage.CONTACTED,
+      LeadStage.QUALIFIED,
+      LeadStage.PROPOSAL,
+      LeadStage.NEGOTIATION,
+    ];
+
+    const openCount =
+      openStages.reduce(
+        (
+          total,
+          stage,
+        ) =>
+          total +
+          getStats(stage)
+            .count,
+        0,
+      );
+
+    const openValueCents =
+      openStages.reduce(
+        (
+          total,
+          stage,
+        ) =>
+          total +
+          getStats(stage)
+            .totalValueCents,
+        0,
+      );
+
+    const wonStats =
+      getStats(
+        LeadStage.WON,
+      );
+
+    const lostStats =
+      getStats(
+        LeadStage.LOST,
+      );
+
+    const visibleCount =
+      openCount +
+      wonStats.count;
+
+    const columns =
+      pipelineStages
+        .filter(
+          (stage) =>
+            stage !==
+            LeadStage.LOST,
+        )
+        .map(
+          (stage) => {
+            const stats =
+              getStats(
+                stage,
+              );
+
+            const data =
+              rowsByStage.get(
+                stage,
+              ) ?? [];
+
+            return {
+              stage,
+
+              count:
+                stats.count,
+
+              totalValueCents:
+                stats.totalValueCents,
+
+              hasMore:
+                stats.count >
+                data.length,
+
+              data,
+            };
+          },
+        );
+
+    const lostData =
+      rowsByStage.get(
+        LeadStage.LOST,
+      ) ?? [];
+
+    return {
       summary: {
-        activeCount,
-        attentionCount,
-        potentialValueCents:
-          potentialValue
-            ._sum
-            .valueCents ?? 0,
+        visibleCount,
+        openCount,
+        openValueCents,
+
+        wonCount:
+          wonStats.count,
+
+        wonValueCents:
+          wonStats.totalValueCents,
+
+        lostCount:
+          lostStats.count,
+
         currency: 'EUR',
+      },
+
+      columns,
+
+      lost: {
+        stage:
+          LeadStage.LOST,
+
+        count:
+          lostStats.count,
+
+        totalValueCents:
+          lostStats.totalValueCents,
+
+        hasMore:
+          lostStats.count >
+          lostData.length,
+
+        data:
+          lostData,
       },
     };
   }

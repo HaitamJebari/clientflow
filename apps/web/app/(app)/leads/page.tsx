@@ -103,7 +103,6 @@ interface LeadsListResponse {
   leads?: LeadApiItem[];
   data?: LeadApiItem[];
   meta?: LeadsListMeta;
-  summary?: LeadsSummary;
 }
 
 type LeadMutationResponse =
@@ -1135,51 +1134,6 @@ export default function LeadsPage() {
             });
           }
 
-          if (
-            !Array.isArray(
-              response,
-            ) &&
-            response.summary
-          ) {
-            setSummary(
-              response.summary,
-            );
-          } else {
-            const activeLeads =
-              mappedLeads.filter(
-                (lead) =>
-                  lead.stage !==
-                    'Won' &&
-                  lead.stage !==
-                    'Lost',
-              );
-
-            setSummary({
-              activeCount:
-                activeLeads.length,
-
-              attentionCount:
-                activeLeads.filter(
-                  (lead) =>
-                    lead.needsAttention,
-                ).length,
-
-              potentialValueCents:
-                activeLeads.reduce(
-                  (
-                    total,
-                    lead,
-                  ) =>
-                    total +
-                    lead.value *
-                      100,
-                  0,
-                ),
-
-              currency:
-                'EUR',
-            });
-          }
         } catch (error) {
           if (
             error instanceof
@@ -1208,9 +1162,35 @@ export default function LeadsPage() {
       ],
     );
 
+  const loadSummary =
+    useCallback(
+      async () => {
+        try {
+          const response =
+            await request<LeadsSummary>(
+              '/leads/summary/overview',
+            );
+
+          setSummary(
+            response,
+          );
+        } catch {
+          /*
+           * The list can remain usable even if summary KPIs
+           * temporarily fail. Keep the last successful values.
+           */
+        }
+      },
+      [request],
+    );
+
   useEffect(() => {
     void loadLeads();
   }, [loadLeads]);
+
+  useEffect(() => {
+    void loadSummary();
+  }, [loadSummary]);
 
   /* =======================================================
      SUCCESS MESSAGE
@@ -1421,6 +1401,8 @@ export default function LeadsPage() {
           await loadLeads();
         }
 
+        await loadSummary();
+
         setSuccessMessage(
           'Lead created successfully.',
         );
@@ -1573,7 +1555,10 @@ export default function LeadsPage() {
           null,
         );
 
-        await loadLeads();
+        await Promise.all([
+          loadLeads(),
+          loadSummary(),
+        ]);
 
         setSuccessMessage(
           'Lead updated successfully.',
@@ -1682,6 +1667,8 @@ export default function LeadsPage() {
         } else {
           await loadLeads();
         }
+
+        await loadSummary();
 
         setSuccessMessage(
           'Lead deleted successfully.',

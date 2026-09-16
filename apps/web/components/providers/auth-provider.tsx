@@ -6,12 +6,14 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
 import {
   apiRequest,
   ApiError,
+  clearApiCache,
 } from '@/lib/api';
 
 import {
@@ -67,15 +69,26 @@ export function AuthProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [
-    accessToken,
-    setAccessToken,
-  ] =
-    useState<string | null>(
+  /*
+   * Keep the access token in a ref instead of React state.
+   *
+   * Why:
+   * - the token itself is not rendered anywhere
+   * - changing it should not re-render every useAuth() consumer
+   * - request() can stay referentially stable across token refreshes
+   *
+   * This is especially important as Dashboard / Leads / Pipeline /
+   * Contacts / Proposals all begin using the same provider.
+   */
+  const accessTokenRef =
+    useRef<string | null>(
       null,
     );
 
-  const [user, setUser] =
+  const [
+    user,
+    setUser,
+  ] =
     useState<User | null>(
       null,
     );
@@ -88,15 +101,23 @@ export function AuthProvider({
       Organization | null
     >(null);
 
-  const [status, setStatus] =
+  const [
+    status,
+    setStatus,
+  ] =
     useState<AuthStatus>(
       'loading',
     );
 
   const clearAuth =
     useCallback(() => {
-      setAccessToken(null);
+      clearApiCache();
+
+      accessTokenRef.current =
+        null;
+
       setUser(null);
+
       setOrganization(null);
 
       setStatus(
@@ -104,26 +125,25 @@ export function AuthProvider({
       );
     }, []);
 
-  const loadMe =
+  const setAuthenticatedSession =
     useCallback(
-      async (
-        token: string,
+      (
+        accessToken: string,
+        authenticatedUser: User,
+        authenticatedOrganization:
+          Organization,
       ) => {
-        const result =
-          await apiRequest<MeResponse>(
-            '/auth/me',
-            {
-              headers: {
-                Authorization:
-                  `Bearer ${token}`,
-              },
-            },
-          );
+        clearApiCache();
 
-        setUser(result.user);
+        accessTokenRef.current =
+          accessToken;
+
+        setUser(
+          authenticatedUser,
+        );
 
         setOrganization(
-          result.organization,
+          authenticatedOrganization,
         );
 
         setStatus(
@@ -133,8 +153,27 @@ export function AuthProvider({
       [],
     );
 
+  const loadMe =
+    useCallback(
+      async (
+        token: string,
+      ) => {
+        return apiRequest<MeResponse>(
+          '/auth/me',
+          {
+            headers: {
+              Authorization:
+                `Bearer ${token}`,
+            },
+          },
+        );
+      },
+      [],
+    );
+
   useEffect(() => {
-    let cancelled = false;
+    let cancelled =
+      false;
 
     async function bootstrap() {
       try {
@@ -145,12 +184,28 @@ export function AuthProvider({
           return;
         }
 
-        setAccessToken(
-          token,
+        accessTokenRef.current =
+          token;
+
+        const result =
+          await loadMe(
+            token,
+          );
+
+        if (cancelled) {
+          return;
+        }
+
+        setUser(
+          result.user,
         );
 
-        await loadMe(
-          token,
+        setOrganization(
+          result.organization,
+        );
+
+        setStatus(
+          'authenticated',
         );
       } catch {
         if (!cancelled) {
@@ -178,7 +233,8 @@ export function AuthProvider({
           await apiRequest<AuthResponse>(
             '/auth/login',
             {
-              method: 'POST',
+              method:
+                'POST',
 
               body:
                 JSON.stringify(
@@ -187,21 +243,15 @@ export function AuthProvider({
             },
           );
 
-        setAccessToken(
+        setAuthenticatedSession(
           result.accessToken,
-        );
-
-        setUser(result.user);
-
-        setOrganization(
+          result.user,
           result.organization,
         );
-
-        setStatus(
-          'authenticated',
-        );
       },
-      [],
+      [
+        setAuthenticatedSession,
+      ],
     );
 
   const registerAccount =
@@ -213,7 +263,8 @@ export function AuthProvider({
           await apiRequest<AuthResponse>(
             '/auth/register',
             {
-              method: 'POST',
+              method:
+                'POST',
 
               body:
                 JSON.stringify(
@@ -222,21 +273,15 @@ export function AuthProvider({
             },
           );
 
-        setAccessToken(
+        setAuthenticatedSession(
           result.accessToken,
-        );
-
-        setUser(result.user);
-
-        setOrganization(
+          result.user,
           result.organization,
         );
-
-        setStatus(
-          'authenticated',
-        );
       },
-      [],
+      [
+        setAuthenticatedSession,
+      ],
     );
 
   const request =
@@ -246,15 +291,14 @@ export function AuthProvider({
         options: RequestInit = {},
       ): Promise<T> => {
         let token =
-          accessToken;
+          accessTokenRef.current;
 
         if (!token) {
           token =
             await refreshAccessToken();
 
-          setAccessToken(
-            token,
-          );
+          accessTokenRef.current =
+            token;
         }
 
         const execute = (
@@ -285,11 +329,8 @@ export function AuthProvider({
           );
         } catch (error) {
           /*
-           * Only refresh after an actual
-           * authentication failure.
-           *
-           * Do NOT refresh after every
-           * 400 / 403 / 500.
+           * Refresh only after a real authentication failure.
+           * Never refresh after unrelated 400 / 403 / 404 / 500 errors.
            */
           if (
             !(
@@ -305,9 +346,8 @@ export function AuthProvider({
             const freshToken =
               await refreshAccessToken();
 
-            setAccessToken(
-              freshToken,
-            );
+            accessTokenRef.current =
+              freshToken;
 
             return await execute(
               freshToken,
@@ -322,34 +362,39 @@ export function AuthProvider({
         }
       },
       [
-        accessToken,
         clearAuth,
       ],
     );
 
   const logout =
-    useCallback(async () => {
-      try {
-        if (accessToken) {
-          await apiRequest<void>(
-            '/auth/logout',
-            {
-              method: 'POST',
+    useCallback(
+      async () => {
+        const token =
+          accessTokenRef.current;
 
-              headers: {
-                Authorization:
-                  `Bearer ${accessToken}`,
+        try {
+          if (token) {
+            await apiRequest<void>(
+              '/auth/logout',
+              {
+                method:
+                  'POST',
+
+                headers: {
+                  Authorization:
+                    `Bearer ${token}`,
+                },
               },
-            },
-          );
+            );
+          }
+        } finally {
+          clearAuth();
         }
-      } finally {
-        clearAuth();
-      }
-    }, [
-      accessToken,
-      clearAuth,
-    ]);
+      },
+      [
+        clearAuth,
+      ],
+    );
 
   const value =
     useMemo<AuthContextValue>(

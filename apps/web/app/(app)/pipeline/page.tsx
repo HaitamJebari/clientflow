@@ -101,18 +101,28 @@ interface ApiLead {
   updatedAt?: string | null;
 }
 
-interface LeadsListResponse {
-  data?: ApiLead[];
-  leads?: ApiLead[];
+interface PipelineColumnResponse {
+  stage: ApiLeadStage;
+  count: number;
+  totalValueCents: number;
+  hasMore: boolean;
+  data: ApiLead[];
+}
 
-  meta?: {
-    page: number;
-    pageSize: number;
-    total: number;
-    totalPages: number;
-    hasPreviousPage: boolean;
-    hasNextPage: boolean;
+interface PipelineBoardResponse {
+  summary: {
+    visibleCount: number;
+    openCount: number;
+    openValueCents: number;
+    wonCount: number;
+    wonValueCents: number;
+    lostCount: number;
+    currency: string;
   };
+
+  columns: PipelineColumnResponse[];
+
+  lost: PipelineColumnResponse;
 }
 
 interface PipelineColumnDefinition {
@@ -126,6 +136,16 @@ interface StageMenuState {
   x: number;
   y: number;
 }
+
+const initialPipelineSummary = {
+  visibleCount: 0,
+  openCount: 0,
+  openValueCents: 0,
+  wonCount: 0,
+  wonValueCents: 0,
+  lostCount: 0,
+  currency: 'EUR',
+};
 
 /* =========================================================
    PIPELINE CONFIG
@@ -201,30 +221,6 @@ const MOVABLE_STAGES: {
 /* =========================================================
    HELPERS
 ========================================================= */
-
-function extractLeads(
-  payload:
-    | ApiLead[]
-    | LeadsListResponse,
-) {
-  if (Array.isArray(payload)) {
-    return payload;
-  }
-
-  if (
-    Array.isArray(payload.data)
-  ) {
-    return payload.data;
-  }
-
-  if (
-    Array.isArray(payload.leads)
-  ) {
-    return payload.leads;
-  }
-
-  return [];
-}
 
 function formatMoney(
   valueCents?: number | null,
@@ -485,6 +481,35 @@ export default function PipelinePage() {
     useState('');
 
   const [
+    debouncedSearch,
+    setDebouncedSearch,
+  ] =
+    useState('');
+
+  const [
+    pipelineSummary,
+    setPipelineSummary,
+  ] =
+    useState(
+      initialPipelineSummary,
+    );
+
+  const [
+    columnStats,
+    setColumnStats,
+  ] =
+    useState<
+      Record<
+        string,
+        {
+          count: number;
+          totalValueCents: number;
+          hasMore: boolean;
+        }
+      >
+    >({});
+
+  const [
     showLost,
     setShowLost,
   ] =
@@ -522,24 +547,91 @@ export default function PipelinePage() {
       null,
     );
 
+  useEffect(() => {
+    const timeout =
+      window.setTimeout(
+        () => {
+          setDebouncedSearch(
+            search.trim(),
+          );
+        },
+        350,
+      );
+
+    return () => {
+      window.clearTimeout(
+        timeout,
+      );
+    };
+  }, [search]);
+
   const loadPipeline =
     useCallback(
-      async () => {
-        setIsLoading(true);
+      async (
+        showLoader = true,
+      ) => {
+        if (showLoader) {
+          setIsLoading(true);
+        }
+
         setError(null);
 
         try {
+          const params =
+            new URLSearchParams({
+              limitPerStage:
+                '20',
+            });
+
+          if (
+            debouncedSearch
+          ) {
+            params.set(
+              'search',
+              debouncedSearch,
+            );
+          }
+
           const response =
-            await request<
-              | ApiLead[]
-              | LeadsListResponse
-            >(
-              '/leads?page=1&pageSize=100&sort=value-high',
+            await request<PipelineBoardResponse>(
+              `/leads/pipeline/board?${params.toString()}`,
             );
 
-          setLeads(
-            extractLeads(
-              response,
+          const visibleLeads =
+            response.columns.flatMap(
+              (column) =>
+                column.data,
+            );
+
+          setLeads([
+            ...visibleLeads,
+            ...response.lost.data,
+          ]);
+
+          setPipelineSummary(
+            response.summary,
+          );
+
+          setColumnStats(
+            Object.fromEntries(
+              [
+                ...response.columns,
+                response.lost,
+              ].map(
+                (column) => [
+                  column.stage,
+                  {
+                    count:
+                      column.count,
+
+                    totalValueCents:
+                      column.totalValueCents,
+
+                    hasMore:
+                      column.hasMore,
+                  },
+                ],
+              ),
             ),
           );
         } catch (loadError) {
@@ -556,95 +648,38 @@ export default function PipelinePage() {
             );
           }
         } finally {
-          setIsLoading(
-            false,
-          );
+          if (showLoader) {
+            setIsLoading(
+              false,
+            );
+          }
         }
       },
-      [request],
+      [
+        request,
+        debouncedSearch,
+      ],
     );
 
   useEffect(() => {
     void loadPipeline();
   }, [loadPipeline]);
 
-  const filteredLeads =
-    useMemo(() => {
-      const normalized =
-        search
-          .trim()
-          .toLowerCase();
-
-      if (!normalized) {
-        return leads;
-      }
-
-      return leads.filter(
-        (lead) =>
-          [
-            getLeadName(lead),
-            lead.company,
-            lead.email,
-            lead.source,
-          ].some(
-            (value) =>
-              value
-                ?.toLowerCase()
-                .includes(
-                  normalized,
-                ),
-          ),
-      );
-    }, [
-      leads,
-      search,
-    ]);
-
   const activeLeads =
-    filteredLeads.filter(
+    leads.filter(
       (lead) =>
         lead.stage !==
         'LOST',
     );
 
   const openPipelineValueCents =
-    activeLeads
-      .filter(
-        (lead) =>
-          lead.stage !==
-          'WON',
-      )
-      .reduce(
-        (
-          total,
-          lead,
-        ) =>
-          total +
-          (lead.valueCents ??
-            0),
-        0,
-      );
+    pipelineSummary.openValueCents;
 
   const wonValueCents =
-    activeLeads
-      .filter(
-        (lead) =>
-          lead.stage ===
-          'WON',
-      )
-      .reduce(
-        (
-          total,
-          lead,
-        ) =>
-          total +
-          (lead.valueCents ??
-            0),
-        0,
-      );
+    pipelineSummary.wonValueCents;
 
   const lostLeads =
-    filteredLeads.filter(
+    leads.filter(
       (lead) =>
         lead.stage ===
         'LOST',
@@ -727,6 +762,10 @@ export default function PipelinePage() {
                     : item,
               ),
           );
+
+          await loadPipeline(
+            false,
+          );
         } catch (moveError) {
           setLeads(
             (current) =>
@@ -769,7 +808,10 @@ export default function PipelinePage() {
           );
         }
       },
-      [request],
+      [
+        request,
+        loadPipeline,
+      ],
     );
 
   const handleDrop =
@@ -906,7 +948,7 @@ export default function PipelinePage() {
             "
           >
             <SummaryChip
-              label={`${activeLeads.length} opportunities`}
+              label={`${pipelineSummary.visibleCount} opportunities`}
             />
 
             <SummaryChip
@@ -1138,7 +1180,7 @@ export default function PipelinePage() {
                   "
                 >
                   {
-                    lostLeads.length
+                    pipelineSummary.lostCount
                   }
                 </span>
               </button>
@@ -1210,17 +1252,28 @@ export default function PipelinePage() {
                         column.stage,
                     );
 
-                  const valueCents =
-                    columnLeads.reduce(
-                      (
-                        total,
-                        lead,
-                      ) =>
-                        total +
-                        (lead.valueCents ??
-                          0),
-                      0,
-                    );
+                  const stats =
+                    columnStats[
+                      column.stage
+                    ] ?? {
+                      count:
+                        columnLeads.length,
+
+                      totalValueCents:
+                        columnLeads.reduce(
+                          (
+                            total,
+                            lead,
+                          ) =>
+                            total +
+                            (lead.valueCents ??
+                              0),
+                          0,
+                        ),
+
+                      hasMore:
+                        false,
+                    };
 
                   return (
                     <PipelineColumn
@@ -1234,7 +1287,13 @@ export default function PipelinePage() {
                         columnLeads
                       }
                       valueCents={
-                        valueCents
+                        stats.totalValueCents
+                      }
+                      totalCount={
+                        stats.count
+                      }
+                      hasMore={
+                        stats.hasMore
                       }
                       isDragOver={
                         dragOverStage ===
@@ -1374,6 +1433,8 @@ function PipelineColumn({
   definition,
   leads,
   valueCents,
+  totalCount,
+  hasMore,
   isDragOver,
   draggedLeadId,
   movingLeadId,
@@ -1391,6 +1452,12 @@ function PipelineColumn({
 
   valueCents:
     number;
+
+  totalCount:
+    number;
+
+  hasMore:
+    boolean;
 
   isDragOver:
     boolean;
@@ -1512,7 +1579,7 @@ function PipelineColumn({
               text-[var(--cf-text-secondary)]
             "
           >
-            {leads.length}
+            {totalCount}
           </span>
         </div>
 

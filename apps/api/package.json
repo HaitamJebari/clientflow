@@ -6,7 +6,10 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "prisma:generate": "node ./node_modules/prisma/build/index.js generate --config ./prisma7.config.ts",
+    "prisma:format": "node ./node_modules/prisma/build/index.js format --config ./prisma7.config.ts",
+    "prisma:migrate:dev": "node ./node_modules/prisma/build/index.js migrate dev --config ./prisma7.config.ts",
+    "build": "npm run prisma:generate && tsc -p tsconfig.build.json",
     "deploy": "nest deploy",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -65,8 +68,4 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^6.0.2"
   }
-
 }
-
-
-  
