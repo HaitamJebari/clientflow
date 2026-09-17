@@ -887,7 +887,7 @@ export default function PipelinePage() {
                 flex
                 items-center
                 gap-2
-                text-[12px]
+                text-[13px]
                 font-semibold
                 uppercase
                 tracking-[0.15em]
@@ -927,7 +927,7 @@ export default function PipelinePage() {
               className="
                 mt-3
                 max-w-[720px]
-                text-[15px]
+                text-[16px]
                 leading-7
                 text-[var(--cf-text-secondary)]
               "
@@ -985,7 +985,7 @@ export default function PipelinePage() {
           >
             <p
               className="
-                text-[13px]
+                text-[14px]
                 leading-5
                 text-red-600
               "
@@ -1088,7 +1088,7 @@ export default function PipelinePage() {
                   bg-[var(--cf-surface-soft)]
                   pl-10
                   pr-10
-                  text-[14px]
+                  text-[15px]
                   text-[var(--cf-text)]
                   outline-none
                   transition
@@ -1157,7 +1157,7 @@ export default function PipelinePage() {
                   border-[var(--cf-border)]
                   bg-[var(--cf-surface)]
                   px-4
-                  text-[13px]
+                  text-[14px]
                   font-semibold
                   text-[var(--cf-text-secondary)]
                   transition
@@ -1176,7 +1176,7 @@ export default function PipelinePage() {
                     bg-[var(--cf-surface-soft)]
                     px-1.5
                     py-0.5
-                    text-[10px]
+                    text-[11px]
                   "
                 >
                   {
@@ -1196,7 +1196,7 @@ export default function PipelinePage() {
                   rounded-xl
                   bg-[var(--cf-primary)]
                   px-4
-                  text-[13px]
+                  text-[14px]
                   font-semibold
                   text-white
                   shadow-[0_6px_16px_rgba(91,91,247,.22)]
@@ -1361,7 +1361,7 @@ export default function PipelinePage() {
         <p
           className="
             mt-1
-            text-[11px]
+            text-[12px]
             leading-5
             text-[var(--cf-text-muted)]
           "
@@ -1554,7 +1554,7 @@ function PipelineColumn({
             <p
               className="
                 mt-2
-                text-[10px]
+                text-[11px]
                 text-[var(--cf-text-muted)]
               "
             >
@@ -1574,7 +1574,7 @@ function PipelineColumn({
               bg-[var(--cf-surface-soft)]
               px-2
               py-1
-              text-[10px]
+              text-[11px]
               font-semibold
               text-[var(--cf-text-secondary)]
             "
@@ -1595,7 +1595,7 @@ function PipelineColumn({
           <div>
             <p
               className="
-                text-[10px]
+                text-[11px]
                 uppercase
                 tracking-[0.07em]
                 text-[var(--cf-text-muted)]
@@ -1699,7 +1699,7 @@ function PipelineColumn({
           >
             <p
               className="
-                text-[11px]
+                text-[12px]
                 leading-5
                 text-[var(--cf-text-muted)]
               "
@@ -1819,7 +1819,7 @@ function PipelineCard({
               justify-center
               rounded-xl
               bg-[var(--cf-primary-soft)]
-              text-[10px]
+              text-[11px]
               font-semibold
               text-[var(--cf-primary)]
             "
@@ -1839,7 +1839,7 @@ function PipelineCard({
               className="
                 block
                 truncate
-                text-[13px]
+                text-[14px]
                 font-semibold
                 text-[var(--cf-text)]
                 transition
@@ -1855,7 +1855,7 @@ function PipelineCard({
               className="
                 mt-0.5
                 truncate
-                text-[11px]
+                text-[12px]
                 text-[var(--cf-text-secondary)]
               "
             >
@@ -1950,7 +1950,7 @@ function PipelineCard({
             rounded-lg
             px-2.5
             py-1.5
-            text-[10px]
+            text-[11px]
             font-semibold
 
             ${
@@ -1991,7 +1991,7 @@ function PipelineCard({
               flex
               items-center
               gap-1.5
-              text-[9px]
+              text-[10px]
               font-semibold
               uppercase
               tracking-[0.07em]
@@ -2009,7 +2009,7 @@ function PipelineCard({
             className="
               mt-1
               line-clamp-2
-              text-[11px]
+              text-[12px]
               leading-5
               text-[var(--cf-text-secondary)]
             "
@@ -2039,7 +2039,7 @@ function PipelineCard({
             min-w-0
             items-center
             gap-1.5
-            text-[10px]
+            text-[11px]
             text-[var(--cf-text-muted)]
           "
         >
@@ -2287,7 +2287,7 @@ function StageMenu({
             <p
               className="
                 truncate
-                text-[13px]
+                text-[14px]
                 font-semibold
                 text-[var(--cf-text)]
               "
@@ -2300,7 +2300,7 @@ function StageMenu({
             <p
               className="
                 mt-0.5
-                text-[10px]
+                text-[11px]
                 text-[var(--cf-text-muted)]
               "
             >
@@ -2369,7 +2369,7 @@ function StageMenu({
                     rounded-lg
                     px-3
                     text-left
-                    text-[12px]
+                    text-[13px]
                     font-medium
                     transition
 
@@ -2489,7 +2489,7 @@ function LostLeadsModal({
           <div>
             <p
               className="
-                text-[11px]
+                text-[12px]
                 font-semibold
                 uppercase
                 tracking-[0.1em]
@@ -2514,7 +2514,7 @@ function LostLeadsModal({
             <p
               className="
                 mt-1
-                text-[13px]
+                text-[14px]
                 leading-5
                 text-[var(--cf-text-secondary)]
               "
@@ -2600,7 +2600,7 @@ function LostLeadsModal({
                         className="
                           block
                           truncate
-                          text-[13px]
+                          text-[14px]
                           font-semibold
                           text-[var(--cf-text)]
                           transition
@@ -2615,7 +2615,7 @@ function LostLeadsModal({
                       <p
                         className="
                           mt-1
-                          text-[11px]
+                          text-[12px]
                           text-[var(--cf-text-secondary)]
                         "
                       >
@@ -2648,7 +2648,7 @@ function LostLeadsModal({
                         border-[var(--cf-border)]
                         bg-[var(--cf-surface)]
                         px-3
-                        text-[12px]
+                        text-[13px]
                         font-semibold
                         text-[var(--cf-text)]
                         transition
@@ -2685,7 +2685,7 @@ function LostLeadsModal({
               <p
                 className="
                   max-w-[360px]
-                  text-[13px]
+                  text-[14px]
                   leading-6
                   text-[var(--cf-text-muted)]
                 "
@@ -2730,7 +2730,7 @@ function SummaryChip({
         rounded-xl
         border
         px-3.5
-        text-[13px]
+        text-[14px]
         font-medium
 
         ${
@@ -2806,7 +2806,7 @@ function StagePill({
         items-center
         rounded-full
         px-2.5
-        text-[10px]
+        text-[11px]
         font-semibold
         ${classes}
       `}
@@ -2848,7 +2848,7 @@ function TemperaturePill({
         gap-1.5
         rounded-full
         px-2.5
-        text-[9px]
+        text-[10px]
         font-semibold
         ${classes}
       `}
@@ -2901,7 +2901,7 @@ function PipelineLoading() {
 
         <p
           className="
-            text-[13px]
+            text-[14px]
             text-[var(--cf-text-secondary)]
           "
         >
@@ -2972,7 +2972,7 @@ function PipelineEmpty({
         className="
           mt-2
           max-w-[420px]
-          text-[13px]
+          text-[14px]
           leading-6
           text-[var(--cf-text-secondary)]
         "
@@ -2997,7 +2997,7 @@ function PipelineEmpty({
             border-[var(--cf-border)]
             bg-[var(--cf-surface)]
             px-4
-            text-[12px]
+            text-[13px]
             font-semibold
             text-[var(--cf-text)]
             transition
@@ -3019,7 +3019,7 @@ function PipelineEmpty({
             rounded-xl
             bg-[var(--cf-primary)]
             px-4
-            text-[12px]
+            text-[13px]
             font-semibold
             text-white
           "

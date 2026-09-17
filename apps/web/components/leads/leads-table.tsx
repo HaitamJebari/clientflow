@@ -4,7 +4,6 @@ import {
   ArrowRight,
   Bot,
   Clock3,
-  Eye,
   MoreHorizontal,
   Pencil,
   Sparkles,
@@ -21,8 +20,6 @@ import {
 import {
   createPortal,
 } from 'react-dom';
-
-import Link from 'next/link';
 
 /* =========================================================
    TYPES
@@ -201,7 +198,7 @@ export function LeadsTable({
       >
         <p
           className="
-            text-[11px]
+            text-[12px]
             text-[var(--cf-text-muted)]
           "
         >
@@ -216,7 +213,7 @@ export function LeadsTable({
             flex
             items-center
             gap-1.5
-            text-[10px]
+            text-[11px]
             text-[var(--cf-text-muted)]
           "
         >
@@ -252,7 +249,7 @@ function TableHeading({
         px-4
         py-3.5
         text-left
-        text-[10px]
+        text-[11px]
         font-semibold
         uppercase
         tracking-[0.1em]
@@ -333,7 +330,7 @@ function LeadRow({
               border
               border-[var(--cf-border)]
               bg-[var(--cf-surface-soft)]
-              text-[11px]
+              text-[12px]
               font-semibold
               text-[var(--cf-text-secondary)]
             "
@@ -369,20 +366,17 @@ function LeadRow({
                 gap-2
               "
             >
-              <Link
-                href={`/leads/${lead.id}`}
+              <p
                 className="
                   truncate
-                  text-[13px]
+                  text-[14px]
                   font-semibold
                   text-[var(--cf-text)]
-                  transition
-                  hover:text-[var(--cf-primary)]
                 "
               >
                 {lead.firstName}{' '}
                 {lead.lastName}
-              </Link>
+              </p>
 
               <TemperatureDot
                 temperature={
@@ -395,7 +389,7 @@ function LeadRow({
               className="
                 mt-1
                 truncate
-                text-[11px]
+                text-[12px]
                 text-[var(--cf-text-secondary)]
               "
             >
@@ -406,7 +400,7 @@ function LeadRow({
               className="
                 mt-[2px]
                 truncate
-                text-[10px]
+                text-[11px]
                 text-[var(--cf-text-muted)]
               "
             >
@@ -440,7 +434,7 @@ function LeadRow({
         >
           <p
             className="
-              text-[12px]
+              text-[13px]
               font-medium
               text-[var(--cf-text)]
             "
@@ -475,7 +469,7 @@ function LeadRow({
         <span
           className="
             whitespace-nowrap
-            text-[14px]
+            text-[15px]
             font-semibold
             text-[var(--cf-text)]
           "
@@ -493,7 +487,7 @@ function LeadRow({
         <span
           className="
             whitespace-nowrap
-            text-[12px]
+            text-[13px]
             text-[var(--cf-text-secondary)]
           "
         >
@@ -513,7 +507,7 @@ function LeadRow({
             min-w-[110px]
             items-center
             gap-2
-            text-[11px]
+            text-[12px]
             text-[var(--cf-text-secondary)]
           "
         >
@@ -557,7 +551,7 @@ function LeadRow({
 
             <span
               className="
-                text-[10px]
+                text-[11px]
                 font-semibold
                 uppercase
                 tracking-[0.08em]
@@ -572,7 +566,7 @@ function LeadRow({
             className="
               mt-1.5
               line-clamp-2
-              text-[11px]
+              text-[12px]
               leading-[18px]
               text-[var(--cf-text-secondary)]
             "
@@ -588,7 +582,7 @@ function LeadRow({
               bg-[var(--cf-primary-soft)]
               px-2
               py-1
-              text-[9px]
+              text-[10px]
               font-medium
               text-[var(--cf-primary)]
             "
@@ -634,7 +628,7 @@ function LeadRow({
             <span
               className="
                 block
-                text-[11px]
+                text-[12px]
                 font-semibold
                 text-[var(--cf-text)]
               "
@@ -647,7 +641,7 @@ function LeadRow({
                 className="
                   mt-[2px]
                   block
-                  text-[9px]
+                  text-[10px]
                   text-[var(--cf-primary)]
                 "
               >
@@ -734,7 +728,7 @@ function TemperatureDot({
       {showLabel && (
         <span
           className="
-            text-[10px]
+            text-[11px]
             text-[var(--cf-text-muted)]
           "
         >
@@ -796,7 +790,7 @@ function StageBadge({
         rounded-full
         px-2.5
         py-1.5
-        text-[10px]
+        text-[11px]
         font-semibold
         ${styles}
       `}
@@ -890,7 +884,7 @@ function LeadActionsMenu({
     }
 
     const menuWidth = 210;
-    const menuHeight = 164;
+    const menuHeight = 112;
     const viewportPadding = 12;
     const gap = 8;
 
@@ -1170,7 +1164,7 @@ function LeadActionsMenu({
                     <p
                       className="
                         truncate
-                        text-[14px]
+                        text-[15px]
                         font-semibold
                         text-[var(--cf-text)]
                       "
@@ -1183,7 +1177,7 @@ function LeadActionsMenu({
                       className="
                         mt-0.5
                         truncate
-                        text-[12px]
+                        text-[13px]
                         text-[var(--cf-text-secondary)]
                       "
                     >
@@ -1218,65 +1212,6 @@ function LeadActionsMenu({
                 </div>
               )}
 
-              <Link
-                href={`/leads/${lead.id}`}
-                role="menuitem"
-                onClick={closeMenu}
-                className={`
-                  flex
-                  w-full
-                  items-center
-                  gap-3
-
-                  rounded-xl
-
-                  text-left
-                  font-medium
-                  text-[var(--cf-text)]
-
-                  transition
-
-                  hover:bg-[var(--cf-surface-soft)]
-
-                  ${
-                    isMobile
-                      ? `
-                          min-h-12
-                          px-3.5
-                          py-3
-                          text-[15px]
-                        `
-                      : `
-                          px-3
-                          py-2.5
-                          text-[13px]
-                        `
-                  }
-                `}
-              >
-                <span
-                  className="
-                    flex
-                    h-8
-                    w-8
-                    shrink-0
-                    items-center
-                    justify-center
-                    rounded-lg
-                    bg-[var(--cf-surface-soft)]
-                    text-[var(--cf-text-secondary)]
-                  "
-                >
-                  <Eye
-                    size={15}
-                  />
-                </span>
-
-                <span>
-                  View details
-                </span>
-              </Link>
-
               <button
                 type="button"
                 role="menuitem"
@@ -1306,12 +1241,12 @@ function LeadActionsMenu({
                           min-h-12
                           px-3.5
                           py-3
-                          text-[15px]
+                          text-[16px]
                         `
                       : `
                           px-3
                           py-2.5
-                          text-[13px]
+                          text-[14px]
                         `
                   }
                 `}
@@ -1370,12 +1305,12 @@ function LeadActionsMenu({
                           min-h-12
                           px-3.5
                           py-3
-                          text-[15px]
+                          text-[16px]
                         `
                       : `
                           px-3
                           py-2.5
-                          text-[13px]
+                          text-[14px]
                         `
                   }
                 `}

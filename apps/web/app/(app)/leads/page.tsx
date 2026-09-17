@@ -1733,7 +1733,7 @@ export default function LeadsPage() {
                 flex
                 items-center
                 gap-2
-                text-[12px]
+                text-[13px]
                 font-semibold
                 uppercase
                 tracking-[0.15em]
@@ -1773,7 +1773,7 @@ export default function LeadsPage() {
               className="
                 mt-3
                 max-w-[720px]
-                text-[15px]
+                text-[16px]
                 leading-7
                 text-[var(--cf-text-secondary)]
               "
@@ -1832,7 +1832,7 @@ export default function LeadsPage() {
               bg-[var(--cf-success)]/10
               px-4
               py-3
-              text-[14px]
+              text-[15px]
               font-medium
               text-[var(--cf-success)]
             "
@@ -2089,7 +2089,7 @@ function SummaryChip({
         rounded-xl
         border
         px-3.5
-        text-[13px]
+        text-[14px]
         font-medium
         ${
           primary
@@ -2153,7 +2153,7 @@ function LoadingState() {
 
         <p
           className="
-            text-[14px]
+            text-[15px]
             text-[var(--cf-text-secondary)]
           "
         >
@@ -2185,7 +2185,7 @@ function ErrorState({
     >
       <p
         className="
-          text-[15px]
+          text-[16px]
           font-semibold
           text-[var(--cf-text)]
         "
@@ -2196,7 +2196,7 @@ function ErrorState({
       <p
         className="
           mt-2
-          text-[14px]
+          text-[15px]
           text-[var(--cf-text-secondary)]
         "
       >
@@ -2215,7 +2215,7 @@ function ErrorState({
           rounded-lg
           bg-[var(--cf-primary)]
           px-4
-          text-[14px]
+          text-[15px]
           font-semibold
           text-white
           transition
@@ -2287,7 +2287,7 @@ function EmptyLeadsState({
         className="
           mt-2
           max-w-[440px]
-          text-[14px]
+          text-[15px]
           leading-6
           text-[var(--cf-text-secondary)]
         "
@@ -2320,7 +2320,7 @@ function EmptyLeadsState({
               border-[var(--cf-border)]
               bg-[var(--cf-surface)]
               px-5
-              text-[14px]
+              text-[15px]
               font-semibold
               text-[var(--cf-text)]
               transition
@@ -2345,7 +2345,7 @@ function EmptyLeadsState({
               rounded-lg
               bg-[var(--cf-primary)]
               px-5
-              text-[14px]
+              text-[15px]
               font-semibold
               text-white
               transition
@@ -2411,7 +2411,7 @@ function PaginationControls({
     >
       <div
         className="
-          text-[12px]
+          text-[13px]
           text-[var(--cf-text-muted)]
         "
       >
@@ -2466,7 +2466,7 @@ function PaginationControls({
             border-[var(--cf-border)]
             bg-[var(--cf-surface)]
             px-3
-            text-[12px]
+            text-[13px]
             font-semibold
             text-[var(--cf-text)]
             transition
@@ -2486,7 +2486,7 @@ function PaginationControls({
           className="
             whitespace-nowrap
             px-2
-            text-[12px]
+            text-[13px]
             font-medium
             text-[var(--cf-text-secondary)]
           "
@@ -2529,7 +2529,7 @@ function PaginationControls({
             border-[var(--cf-border)]
             bg-[var(--cf-surface)]
             px-3
-            text-[12px]
+            text-[13px]
             font-semibold
             text-[var(--cf-text)]
             transition
@@ -2654,7 +2654,7 @@ function LeadFormModal({
             <div
               className="
                 mb-2
-                text-[12px]
+                text-[13px]
                 font-semibold
                 uppercase
                 tracking-[0.14em]
@@ -2685,11 +2685,11 @@ function LeadFormModal({
               className="
                 mt-2
                 max-w-[620px]
-                text-[14px]
+                text-[15px]
                 leading-6
                 text-[var(--cf-text-secondary)]
 
-                sm:text-[15px]
+                sm:text-[16px]
               "
             >
               {isEdit
@@ -2760,7 +2760,7 @@ function LeadFormModal({
                   bg-red-500/5
                   px-4
                   py-3
-                  text-[14px]
+                  text-[15px]
                   text-red-600
                 "
               >
@@ -3168,7 +3168,7 @@ function LeadFormModal({
                 border-[var(--cf-border)]
                 bg-[var(--cf-surface)]
                 px-5
-                text-[14px]
+                text-[15px]
                 font-semibold
                 text-[var(--cf-text)]
                 transition
@@ -3193,7 +3193,7 @@ function LeadFormModal({
                 rounded-xl
                 bg-[var(--cf-primary)]
                 px-5
-                text-[14px]
+                text-[15px]
                 font-semibold
                 text-white
                 shadow-[0_8px_18px_rgba(91,91,247,.22)]
@@ -3304,7 +3304,7 @@ function DeleteLeadModal({
         <p
           className="
             mt-2
-            text-[14px]
+            text-[15px]
             leading-6
             text-[var(--cf-text-secondary)]
           "
@@ -3334,7 +3334,7 @@ function DeleteLeadModal({
               bg-red-500/5
               px-4
               py-3
-              text-[13px]
+              text-[14px]
               text-red-600
             "
           >
@@ -3369,7 +3369,7 @@ function DeleteLeadModal({
               border-[var(--cf-border)]
               bg-[var(--cf-surface)]
               px-5
-              text-[14px]
+              text-[15px]
               font-semibold
               text-[var(--cf-text)]
               transition
@@ -3396,7 +3396,7 @@ function DeleteLeadModal({
               rounded-xl
               bg-red-600
               px-5
-              text-[14px]
+              text-[15px]
               font-semibold
               text-white
               transition
@@ -3445,7 +3445,7 @@ function Label({
   return (
     <label
       className="
-        text-[13px]
+        text-[14px]
         font-semibold
         text-[var(--cf-text)]
       "
@@ -3470,7 +3470,7 @@ function Input(
         border-[var(--cf-border)]
         bg-[var(--cf-surface-soft)]
         px-4
-        text-[15px]
+        text-[16px]
         text-[var(--cf-text)]
         outline-none
         transition
@@ -3501,7 +3501,7 @@ function Select(
         border-[var(--cf-border)]
         bg-[var(--cf-surface-soft)]
         px-4
-        text-[15px]
+        text-[16px]
         text-[var(--cf-text)]
         outline-none
         transition
@@ -3532,7 +3532,7 @@ function Textarea(
         bg-[var(--cf-surface-soft)]
         px-4
         py-3
-        text-[15px]
+        text-[16px]
         text-[var(--cf-text)]
         outline-none
         transition

@@ -4,6 +4,10 @@ import {
 } from '@nestjs/common';
 
 import {
+  randomUUID,
+} from 'node:crypto';
+
+import {
   LeadStage,
   LeadTemperature,
 } from '../../generated/prisma/enums';
@@ -89,6 +93,71 @@ const pipelineStages = [
   LeadStage.LOST,
 ] as const;
 
+
+function normalizeContactEmail(
+  value:
+    | string
+    | null
+    | undefined,
+) {
+  const normalized =
+    value
+      ?.trim()
+      .toLowerCase();
+
+  return normalized || null;
+}
+
+function normalizeContactPhone(
+  value:
+    | string
+    | null
+    | undefined,
+) {
+  const normalized =
+    value
+      ?.replace(
+        /\s+/g,
+        '',
+      )
+      .trim();
+
+  return normalized || null;
+}
+
+function contactIdentityKey(
+  email:
+    | string
+    | null
+    | undefined,
+
+  phone:
+    | string
+    | null
+    | undefined,
+
+  leadId: string,
+) {
+  const normalizedEmail =
+    normalizeContactEmail(
+      email,
+    );
+
+  if (normalizedEmail) {
+    return `email:${normalizedEmail}`;
+  }
+
+  const normalizedPhone =
+    normalizeContactPhone(
+      phone,
+    );
+
+  if (normalizedPhone) {
+    return `phone:${normalizedPhone}`;
+  }
+
+  return `lead:${leadId}`;
+}
 
 interface LeadSummaryRow {
   activeCount: number;
@@ -207,15 +276,128 @@ export class LeadsService {
     organizationId: string,
     dto: CreateLeadDto,
   ) {
-    return this.prisma.lead.create({
-      data: {
-        organizationId,
-        ...dto,
-        currency:
-          dto.currency?.toUpperCase() ??
-          'EUR',
+    const leadId =
+      randomUUID();
+
+    const identityKey =
+      contactIdentityKey(
+        dto.email,
+        dto.phone,
+        leadId,
+      );
+
+    return this.prisma.$transaction(
+      async (tx) => {
+        const contact =
+          await tx.contact.upsert({
+            where: {
+              organizationId_identityKey: {
+                organizationId,
+                identityKey,
+              },
+            },
+
+            create: {
+              organizationId,
+              identityKey,
+
+              firstName:
+                dto.firstName,
+
+              lastName:
+                dto.lastName,
+
+              email:
+                dto.email,
+
+              phone:
+                dto.phone,
+
+              company:
+                dto.company,
+
+              jobTitle:
+                dto.jobTitle,
+
+              website:
+                dto.website,
+
+              source:
+                dto.source,
+            },
+
+            update: {
+              firstName:
+                dto.firstName,
+
+              ...(dto.lastName !==
+                undefined && {
+                lastName:
+                  dto.lastName,
+              }),
+
+              ...(dto.email !==
+                undefined && {
+                email:
+                  dto.email,
+              }),
+
+              ...(dto.phone !==
+                undefined && {
+                phone:
+                  dto.phone,
+              }),
+
+              ...(dto.company !==
+                undefined && {
+                company:
+                  dto.company,
+              }),
+
+              ...(dto.jobTitle !==
+                undefined && {
+                jobTitle:
+                  dto.jobTitle,
+              }),
+
+              ...(dto.website !==
+                undefined && {
+                website:
+                  dto.website,
+              }),
+
+              ...(dto.source !==
+                undefined && {
+                source:
+                  dto.source,
+              }),
+            },
+
+            select: {
+              id: true,
+            },
+          });
+
+        return tx.lead.create({
+          data: {
+            id:
+              leadId,
+
+            organizationId,
+
+            contactId:
+              contact.id,
+
+            ...dto,
+
+            currency:
+              dto.currency
+                ?.toUpperCase() ??
+              'EUR',
+          },
+        });
       },
-    });
+    );
   }
 
   async findAll(
@@ -895,41 +1077,220 @@ export class LeadsService {
     id: string,
     dto: UpdateLeadDto,
   ) {
-    await this.findOne(
-      organizationId,
-      id,
-    );
-
-    return this.prisma.lead.update({
-      where: {
+    const existing =
+      await this.findOne(
+        organizationId,
         id,
-      },
+      );
 
-      data: {
-        ...dto,
+    const merged = {
+      firstName:
+        dto.firstName ??
+        existing.firstName,
 
-        ...(dto.currency && {
-          currency:
-            dto.currency.toUpperCase(),
-        }),
+      lastName:
+        dto.lastName ??
+        existing.lastName,
+
+      email:
+        dto.email ??
+        existing.email,
+
+      phone:
+        dto.phone ??
+        existing.phone,
+
+      company:
+        dto.company ??
+        existing.company,
+
+      jobTitle:
+        dto.jobTitle ??
+        existing.jobTitle,
+
+      website:
+        dto.website ??
+        existing.website,
+
+      source:
+        dto.source ??
+        existing.source,
+    };
+
+    const identityKey =
+      contactIdentityKey(
+        merged.email,
+        merged.phone,
+        id,
+      );
+
+    return this.prisma.$transaction(
+      async (tx) => {
+        const contact =
+          await tx.contact.upsert({
+            where: {
+              organizationId_identityKey: {
+                organizationId,
+                identityKey,
+              },
+            },
+
+            create: {
+              organizationId,
+              identityKey,
+
+              firstName:
+                merged.firstName,
+
+              lastName:
+                merged.lastName,
+
+              email:
+                merged.email,
+
+              phone:
+                merged.phone,
+
+              company:
+                merged.company,
+
+              jobTitle:
+                merged.jobTitle,
+
+              website:
+                merged.website,
+
+              source:
+                merged.source,
+            },
+
+            update: {
+              firstName:
+                merged.firstName,
+
+              lastName:
+                merged.lastName,
+
+              email:
+                merged.email,
+
+              phone:
+                merged.phone,
+
+              company:
+                merged.company,
+
+              jobTitle:
+                merged.jobTitle,
+
+              website:
+                merged.website,
+
+              source:
+                merged.source,
+            },
+
+            select: {
+              id: true,
+            },
+          });
+
+        const updatedLead =
+          await tx.lead.update({
+            where: {
+              id,
+            },
+
+            data: {
+              ...dto,
+
+              contactId:
+                contact.id,
+
+              ...(dto.currency && {
+                currency:
+                  dto.currency
+                    .toUpperCase(),
+              }),
+            },
+          });
+
+        if (
+          existing.contactId &&
+          existing.contactId !==
+            contact.id
+        ) {
+          const remaining =
+            await tx.lead.count({
+              where: {
+                organizationId,
+
+                contactId:
+                  existing.contactId,
+              },
+            });
+
+          if (
+            remaining === 0
+          ) {
+            await tx.contact.delete({
+              where: {
+                id:
+                  existing.contactId,
+              },
+            });
+          }
+        }
+
+        return updatedLead;
       },
-    });
+    );
   }
 
   async remove(
     organizationId: string,
     id: string,
   ) {
-    await this.findOne(
-      organizationId,
-      id,
-    );
-
-    await this.prisma.lead.delete({
-      where: {
+    const existing =
+      await this.findOne(
+        organizationId,
         id,
+      );
+
+    await this.prisma.$transaction(
+      async (tx) => {
+        await tx.lead.delete({
+          where: {
+            id,
+          },
+        });
+
+        if (
+          existing.contactId
+        ) {
+          const remaining =
+            await tx.lead.count({
+              where: {
+                organizationId,
+
+                contactId:
+                  existing.contactId,
+              },
+            });
+
+          if (
+            remaining === 0
+          ) {
+            await tx.contact.delete({
+              where: {
+                id:
+                  existing.contactId,
+              },
+            });
+          }
+        }
       },
-    });
+    );
 
     return {
       success: true,
@@ -938,3 +1299,4 @@ export class LeadsService {
     };
   }
 }
+

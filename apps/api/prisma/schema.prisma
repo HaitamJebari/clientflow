@@ -71,6 +71,7 @@ model Organization {
   members  OrganizationMember[]
   sessions Session[]
   leads    Lead[]
+  contacts Contact[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -122,10 +123,44 @@ model Session {
   @@map("sessions")
 }
 
+model Contact {
+  id String @id @default(uuid())
+
+  organizationId String
+  identityKey    String
+
+  firstName String
+  lastName  String?
+
+  email String?
+  phone String?
+
+  company  String?
+  jobTitle String?
+  website  String?
+
+  source String?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  leads        Lead[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, identityKey])
+  @@index([organizationId])
+  @@index([organizationId, email])
+  @@index([organizationId, phone])
+  @@index([organizationId, company])
+  @@index([organizationId, updatedAt])
+  @@map("contacts")
+}
+
 model Lead {
   id String @id @default(uuid())
 
   organizationId String
+  contactId      String?
 
   firstName String
   lastName  String?
@@ -167,16 +202,26 @@ model Lead {
   aiUpdatedAt DateTime?
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contact      Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /**
+   * Existing organization-scoped indexes remain useful.
+   * The composite indexes below directly match the hottest
+   * list/pipeline ordering patterns.
+   */
   @@index([organizationId])
-  @@index([organizationId, stage])
+  @@index([organizationId, contactId])
+  @@index([organizationId, stage, updatedAt])
+  @@index([organizationId, stage, valueCents])
   @@index([organizationId, temperature])
   @@index([organizationId, qualification])
   @@index([organizationId, email])
   @@index([organizationId, nextFollowUpAt])
   @@index([organizationId, createdAt])
+  @@index([organizationId, updatedAt])
+  @@index([organizationId, company])
   @@map("leads")
 }

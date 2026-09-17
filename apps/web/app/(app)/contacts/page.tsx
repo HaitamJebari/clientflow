@@ -17,7 +17,7 @@ import Link from 'next/link';
 import {
   useCallback,
   useEffect,
-  useMemo,
+  useRef,
   useState,
 } from 'react';
 
@@ -28,53 +28,6 @@ import {
 /* =========================================================
    TYPES
 ========================================================= */
-
-type ApiLeadStage =
-  | 'NEW'
-  | 'CONTACTED'
-  | 'QUALIFIED'
-  | 'PROPOSAL'
-  | 'NEGOTIATION'
-  | 'WON'
-  | 'LOST';
-
-interface ApiLead {
-  id: string;
-
-  firstName: string;
-  lastName?: string | null;
-
-  email?: string | null;
-  phone?: string | null;
-
-  company?: string | null;
-  jobTitle?: string | null;
-
-  source?: string | null;
-
-  stage: ApiLeadStage;
-
-  valueCents?: number | null;
-  currency?: string | null;
-
-  lastActivityAt?: string | null;
-  updatedAt?: string | null;
-  createdAt?: string | null;
-}
-
-interface LeadsListResponse {
-  data?: ApiLead[];
-  leads?: ApiLead[];
-
-  meta?: {
-    page: number;
-    pageSize: number;
-    total: number;
-    totalPages: number;
-    hasPreviousPage: boolean;
-    hasNextPage: boolean;
-  };
-}
 
 type ContactFilter =
   | 'all'
@@ -89,8 +42,7 @@ type ContactSort =
   | 'value';
 
 interface ContactRecord {
-  key: string;
-  representativeLeadId: string;
+  id: string;
 
   firstName: string;
   lastName: string;
@@ -101,8 +53,6 @@ interface ContactRecord {
   company: string;
   jobTitle: string;
 
-  opportunities: ApiLead[];
-
   activeOpportunityCount: number;
 
   openValueCents: number;
@@ -111,57 +61,52 @@ interface ContactRecord {
   latestActivityAt: string | null;
 }
 
-/* =========================================================
-   HELPERS
-========================================================= */
-
-function extractLeads(
-  payload:
-    | ApiLead[]
-    | LeadsListResponse,
-) {
-  if (Array.isArray(payload)) {
-    return payload;
-  }
-
-  if (
-    Array.isArray(payload.data)
-  ) {
-    return payload.data;
-  }
-
-  if (
-    Array.isArray(payload.leads)
-  ) {
-    return payload.leads;
-  }
-
-  return [];
+interface ContactsListMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
 }
 
-function contactIdentity(
-  lead: ApiLead,
-) {
-  const email =
-    lead.email
-      ?.trim()
-      .toLowerCase();
-
-  if (email) {
-    return `email:${email}`;
-  }
-
-  const phone =
-    lead.phone
-      ?.replace(/\s+/g, '')
-      .trim();
-
-  if (phone) {
-    return `phone:${phone}`;
-  }
-
-  return `lead:${lead.id}`;
+interface ContactsListResponse {
+  data: ContactRecord[];
+  meta: ContactsListMeta;
 }
+
+interface ContactsSummary {
+  totalContacts: number;
+  activeContacts: number;
+  clientContacts: number;
+  lifetimeValueCents: number;
+  currency: string;
+}
+
+const CONTACTS_PAGE_SIZE =
+  20;
+
+const initialMeta:
+  ContactsListMeta = {
+    page: 1,
+    pageSize:
+      CONTACTS_PAGE_SIZE,
+    total: 0,
+    totalPages: 1,
+    hasPreviousPage:
+      false,
+    hasNextPage:
+      false,
+  };
+
+const initialSummary:
+  ContactsSummary = {
+    totalContacts: 0,
+    activeContacts: 0,
+    clientContacts: 0,
+    lifetimeValueCents: 0,
+    currency: 'EUR',
+  };
 
 function contactName(
   contact:
@@ -174,17 +119,6 @@ function contactName(
     .filter(Boolean)
     .join(' ') ||
     'Unnamed contact';
-}
-
-function leadName(
-  lead: ApiLead,
-) {
-  return [
-    lead.firstName,
-    lead.lastName,
-  ]
-    .filter(Boolean)
-    .join(' ');
 }
 
 function getInitials(
@@ -204,165 +138,9 @@ function getInitials(
   return (
     `${first}${last}`.toUpperCase() ||
     contact.company
-      .slice(0, 2)
+      ?.slice(0, 2)
       .toUpperCase() ||
     'CT'
-  );
-}
-
-function isActiveStage(
-  stage:
-    ApiLeadStage,
-) {
-  return (
-    stage !== 'WON' &&
-    stage !== 'LOST'
-  );
-}
-
-function buildContacts(
-  leads:
-    ApiLead[],
-): ContactRecord[] {
-  const grouped =
-    new Map<
-      string,
-      ApiLead[]
-    >();
-
-  for (const lead of leads) {
-    const key =
-      contactIdentity(
-        lead,
-      );
-
-    const existing =
-      grouped.get(key) ??
-      [];
-
-    existing.push(
-      lead,
-    );
-
-    grouped.set(
-      key,
-      existing,
-    );
-  }
-
-  return Array.from(
-    grouped.entries(),
-  ).map(
-    ([key, opportunities]) => {
-      const sorted =
-        [...opportunities].sort(
-          (a, b) => {
-            const aTime =
-              new Date(
-                a.lastActivityAt ??
-                  a.updatedAt ??
-                  a.createdAt ??
-                  0,
-              ).getTime();
-
-            const bTime =
-              new Date(
-                b.lastActivityAt ??
-                  b.updatedAt ??
-                  b.createdAt ??
-                  0,
-              ).getTime();
-
-            return bTime - aTime;
-          },
-        );
-
-      const representative =
-        sorted[0];
-
-      const active =
-        opportunities.filter(
-          (lead) =>
-            isActiveStage(
-              lead.stage,
-            ),
-        );
-
-      const won =
-        opportunities.filter(
-          (lead) =>
-            lead.stage ===
-            'WON',
-        );
-
-      const latestActivityAt =
-        representative.lastActivityAt ??
-        representative.updatedAt ??
-        representative.createdAt ??
-        null;
-
-      return {
-        key,
-
-        representativeLeadId:
-          representative.id,
-
-        firstName:
-          representative.firstName ??
-          '',
-
-        lastName:
-          representative.lastName ??
-          '',
-
-        email:
-          representative.email ??
-          '',
-
-        phone:
-          representative.phone ??
-          '',
-
-        company:
-          representative.company ??
-          'No company',
-
-        jobTitle:
-          representative.jobTitle ??
-          '',
-
-        opportunities,
-
-        activeOpportunityCount:
-          active.length,
-
-        openValueCents:
-          active.reduce(
-            (
-              total,
-              lead,
-            ) =>
-              total +
-              (lead.valueCents ??
-                0),
-            0,
-          ),
-
-        lifetimeValueCents:
-          won.reduce(
-            (
-              total,
-              lead,
-            ) =>
-              total +
-              (lead.valueCents ??
-                0),
-            0,
-          ),
-
-        latestActivityAt,
-      };
-    },
   );
 }
 
@@ -460,10 +238,32 @@ export default function ContactsPage() {
   } = useAuth();
 
   const [
-    leads,
-    setLeads,
+    contacts,
+    setContacts,
   ] =
-    useState<ApiLead[]>([]);
+    useState<
+      ContactRecord[]
+    >([]);
+
+  const [
+    meta,
+    setMeta,
+  ] =
+    useState<
+      ContactsListMeta
+    >(
+      initialMeta,
+    );
+
+  const [
+    summary,
+    setSummary,
+  ] =
+    useState<
+      ContactsSummary
+    >(
+      initialSummary,
+    );
 
   const [
     loading,
@@ -475,9 +275,9 @@ export default function ContactsPage() {
     error,
     setError,
   ] =
-    useState<string | null>(
-      null,
-    );
+    useState<
+      string | null
+    >(null);
 
   const [
     search,
@@ -486,10 +286,18 @@ export default function ContactsPage() {
     useState('');
 
   const [
+    debouncedSearch,
+    setDebouncedSearch,
+  ] =
+    useState('');
+
+  const [
     filter,
     setFilter,
   ] =
-    useState<ContactFilter>(
+    useState<
+      ContactFilter
+    >(
       'all',
     );
 
@@ -497,31 +305,104 @@ export default function ContactsPage() {
     sort,
     setSort,
   ] =
-    useState<ContactSort>(
+    useState<
+      ContactSort
+    >(
       'recent',
     );
+
+  const [
+    page,
+    setPage,
+  ] =
+    useState(1);
+
+  const requestSequence =
+    useRef(0);
+
+  useEffect(() => {
+    const timeout =
+      window.setTimeout(
+        () => {
+          setDebouncedSearch(
+            search.trim(),
+          );
+
+          setPage(1);
+        },
+        350,
+      );
+
+    return () => {
+      window.clearTimeout(
+        timeout,
+      );
+    };
+  }, [search]);
 
   const loadContacts =
     useCallback(
       async () => {
-        setLoading(true);
+        const sequence =
+          ++requestSequence.current;
+
         setError(null);
 
         try {
+          const params =
+            new URLSearchParams({
+              page:
+                String(page),
+
+              pageSize:
+                String(
+                  CONTACTS_PAGE_SIZE,
+                ),
+
+              filter,
+              sort,
+            });
+
+          if (
+            debouncedSearch
+          ) {
+            params.set(
+              'search',
+              debouncedSearch,
+            );
+          }
+
           const response =
             await request<
-              | ApiLead[]
-              | LeadsListResponse
+              ContactsListResponse
             >(
-              '/leads?page=1&pageSize=100&sort=company',
+              `/contacts?${params.toString()}`,
             );
 
-          setLeads(
-            extractLeads(
-              response,
-            ),
+          if (
+            sequence !==
+            requestSequence.current
+          ) {
+            return;
+          }
+
+          setContacts(
+            response.data,
           );
-        } catch (loadError) {
+
+          setMeta(
+            response.meta,
+          );
+        } catch (
+          loadError
+        ) {
+          if (
+            sequence !==
+            requestSequence.current
+          ) {
+            return;
+          }
+
           if (
             loadError instanceof
             Error
@@ -535,7 +416,44 @@ export default function ContactsPage() {
             );
           }
         } finally {
-          setLoading(false);
+          if (
+            sequence ===
+            requestSequence.current
+          ) {
+            setLoading(
+              false,
+            );
+          }
+        }
+      },
+      [
+        request,
+        page,
+        filter,
+        sort,
+        debouncedSearch,
+      ],
+    );
+
+  const loadSummary =
+    useCallback(
+      async () => {
+        try {
+          const response =
+            await request<
+              ContactsSummary
+            >(
+              '/contacts/summary/overview',
+            );
+
+          setSummary(
+            response,
+          );
+        } catch {
+          /*
+           * Keep the page usable even if summary metrics
+           * temporarily fail.
+           */
         }
       },
       [request],
@@ -545,166 +463,21 @@ export default function ContactsPage() {
     void loadContacts();
   }, [loadContacts]);
 
-  const contacts =
-    useMemo(
-      () =>
-        buildContacts(
-          leads,
-        ),
-      [leads],
-    );
+  useEffect(() => {
+    void loadSummary();
+  }, [loadSummary]);
 
   const filteredContacts =
-    useMemo(() => {
-      const normalizedSearch =
-        search
-          .trim()
-          .toLowerCase();
-
-      const filtered =
-        contacts.filter(
-          (contact) => {
-            const matchesSearch =
-              !normalizedSearch ||
-              [
-                contactName(
-                  contact,
-                ),
-                contact.company,
-                contact.email,
-                contact.phone,
-                contact.jobTitle,
-              ].some(
-                (value) =>
-                  value
-                    .toLowerCase()
-                    .includes(
-                      normalizedSearch,
-                    ),
-              );
-
-            if (
-              !matchesSearch
-            ) {
-              return false;
-            }
-
-            if (
-              filter ===
-              'active'
-            ) {
-              return (
-                contact.activeOpportunityCount >
-                0
-              );
-            }
-
-            if (
-              filter ===
-              'clients'
-            ) {
-              return (
-                contact.lifetimeValueCents >
-                0
-              );
-            }
-
-            if (
-              filter ===
-              'inactive'
-            ) {
-              return (
-                contact.activeOpportunityCount ===
-                0
-              );
-            }
-
-            return true;
-          },
-        );
-
-      return [...filtered].sort(
-        (a, b) => {
-          if (
-            sort ===
-            'name'
-          ) {
-            return contactName(
-              a,
-            ).localeCompare(
-              contactName(
-                b,
-              ),
-            );
-          }
-
-          if (
-            sort ===
-            'company'
-          ) {
-            return a.company.localeCompare(
-              b.company,
-            );
-          }
-
-          if (
-            sort ===
-            'value'
-          ) {
-            return (
-              b.lifetimeValueCents +
-                b.openValueCents -
-              (a.lifetimeValueCents +
-                a.openValueCents)
-            );
-          }
-
-          const aTime =
-            new Date(
-              a.latestActivityAt ??
-                0,
-            ).getTime();
-
-          const bTime =
-            new Date(
-              b.latestActivityAt ??
-                0,
-            ).getTime();
-
-          return bTime - aTime;
-        },
-      );
-    }, [
-      contacts,
-      filter,
-      search,
-      sort,
-    ]);
+    contacts;
 
   const activeContacts =
-    contacts.filter(
-      (contact) =>
-        contact.activeOpportunityCount >
-        0,
-    ).length;
+    summary.activeContacts;
 
   const clientContacts =
-    contacts.filter(
-      (contact) =>
-        contact.lifetimeValueCents >
-        0,
-    ).length;
+    summary.clientContacts;
 
   const lifetimeValue =
-    contacts.reduce(
-      (
-        total,
-        contact,
-      ) =>
-        total +
-        contact.lifetimeValueCents,
-      0,
-    );
+    summary.lifetimeValueCents;
 
   if (loading) {
     return (
@@ -742,7 +515,7 @@ export default function ContactsPage() {
               flex
               items-center
               gap-2
-              text-[12px]
+              text-[13px]
               font-semibold
               uppercase
               tracking-[0.15em]
@@ -781,7 +554,7 @@ export default function ContactsPage() {
             className="
               mt-3
               max-w-[720px]
-              text-[15px]
+              text-[16px]
               leading-7
               text-[var(--cf-text-secondary)]
             "
@@ -803,7 +576,7 @@ export default function ContactsPage() {
                 size={15}
               />
             }
-            label={`${contacts.length} contacts`}
+            label={`${summary.totalContacts} contacts`}
           />
 
           <SummaryChip
@@ -850,7 +623,7 @@ export default function ContactsPage() {
         >
           <p
             className="
-              text-[13px]
+              text-[14px]
               leading-5
               text-red-600
             "
@@ -952,7 +725,7 @@ export default function ContactsPage() {
                 bg-[var(--cf-surface-soft)]
                 pl-10
                 pr-10
-                text-[14px]
+                text-[15px]
                 text-[var(--cf-text)]
                 outline-none
                 transition
@@ -1007,12 +780,14 @@ export default function ContactsPage() {
               value={filter}
               onChange={(
                 event,
-              ) =>
+              ) => {
                 setFilter(
                   event.target
                     .value as ContactFilter,
-                )
-              }
+                );
+
+                setPage(1);
+              }}
               className="
                 h-11
                 rounded-xl
@@ -1020,7 +795,7 @@ export default function ContactsPage() {
                 border-[var(--cf-border)]
                 bg-[var(--cf-surface)]
                 px-3
-                text-[13px]
+                text-[14px]
                 font-medium
                 text-[var(--cf-text-secondary)]
                 outline-none
@@ -1048,12 +823,14 @@ export default function ContactsPage() {
               value={sort}
               onChange={(
                 event,
-              ) =>
+              ) => {
                 setSort(
                   event.target
                     .value as ContactSort,
-                )
-              }
+                );
+
+                setPage(1);
+              }}
               className="
                 h-11
                 rounded-xl
@@ -1061,7 +838,7 @@ export default function ContactsPage() {
                 border-[var(--cf-border)]
                 bg-[var(--cf-surface)]
                 px-3
-                text-[13px]
+                text-[14px]
                 font-medium
                 text-[var(--cf-text-secondary)]
                 outline-none
@@ -1102,21 +879,20 @@ export default function ContactsPage() {
         >
           <p
             className="
-              text-[11px]
+              text-[12px]
               text-[var(--cf-text-muted)]
             "
           >
-            {filteredContacts.length}{' '}
-            {filteredContacts.length ===
-            1
+            {meta.total}{' '}
+            {meta.total === 1
               ? 'contact'
               : 'contacts'}{' '}
-            shown
+            match
           </p>
 
           <p
             className="
-              text-[11px]
+              text-[12px]
               text-[var(--cf-text-muted)]
             "
           >
@@ -1214,7 +990,7 @@ export default function ContactsPage() {
                     ) => (
                       <ContactRow
                         key={
-                          contact.key
+                          contact.id
                         }
                         contact={
                           contact
@@ -1251,7 +1027,7 @@ export default function ContactsPage() {
               (contact) => (
                 <ContactCard
                   key={
-                    contact.key
+                    contact.id
                   }
                   contact={
                     contact
@@ -1269,6 +1045,140 @@ export default function ContactsPage() {
             setFilter('all');
           }}
         />
+      )}
+
+      {meta.total > 0 && (
+        <div
+          className="
+            mt-5
+            flex
+            flex-col
+            gap-3
+            rounded-[16px]
+            border
+            border-[var(--cf-border)]
+            bg-[var(--cf-surface)]
+            px-4
+            py-3
+            shadow-[var(--cf-shadow)]
+
+            sm:flex-row
+            sm:items-center
+            sm:justify-between
+          "
+        >
+          <p
+            className="
+              text-[12px]
+              text-[var(--cf-text-muted)]
+            "
+          >
+            Showing{' '}
+            {Math.min(
+              (meta.page - 1) *
+                meta.pageSize +
+                1,
+              meta.total,
+            )}
+            -
+            {Math.min(
+              meta.page *
+                meta.pageSize,
+              meta.total,
+            )}{' '}
+            of {meta.total}
+          </p>
+
+          <div
+            className="
+              flex
+              items-center
+              justify-between
+              gap-2
+
+              sm:justify-end
+            "
+          >
+            <button
+              type="button"
+              disabled={
+                !meta.hasPreviousPage
+              }
+              onClick={() =>
+                setPage(
+                  (current) =>
+                    Math.max(
+                      1,
+                      current - 1,
+                    ),
+                )
+              }
+              className="
+                h-9
+                rounded-xl
+                border
+                border-[var(--cf-border)]
+                bg-[var(--cf-surface)]
+                px-3
+                text-[12px]
+                font-semibold
+                text-[var(--cf-text-secondary)]
+                transition
+
+                hover:bg-[var(--cf-surface-soft)]
+
+                disabled:cursor-not-allowed
+                disabled:opacity-40
+              "
+            >
+              Previous
+            </button>
+
+            <span
+              className="
+                px-2
+                text-[12px]
+                font-medium
+                text-[var(--cf-text-muted)]
+              "
+            >
+              Page {meta.page} of{' '}
+              {meta.totalPages}
+            </span>
+
+            <button
+              type="button"
+              disabled={
+                !meta.hasNextPage
+              }
+              onClick={() =>
+                setPage(
+                  (current) =>
+                    current + 1,
+                )
+              }
+              className="
+                h-9
+                rounded-xl
+                border
+                border-[var(--cf-border)]
+                bg-[var(--cf-surface)]
+                px-3
+                text-[12px]
+                font-semibold
+                text-[var(--cf-text-secondary)]
+                transition
+
+                hover:bg-[var(--cf-surface-soft)]
+
+                disabled:cursor-not-allowed
+                disabled:opacity-40
+              "
+            >
+              Next
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1291,7 +1201,7 @@ function TableHeading({
         px-4
         py-3.5
         text-left
-        text-[10px]
+        text-[11px]
         font-semibold
         uppercase
         tracking-[0.09em]
@@ -1352,7 +1262,7 @@ function ContactRow({
               justify-center
               rounded-xl
               bg-[var(--cf-primary-soft)]
-              text-[11px]
+              text-[12px]
               font-semibold
               text-[var(--cf-primary)]
             "
@@ -1368,12 +1278,12 @@ function ContactRow({
             "
           >
             <Link
-              href={`/contacts/${contact.representativeLeadId}`}
+              href={`/contacts/${contact.id}`}
               className="
                 block
                 max-w-[190px]
                 truncate
-                text-[13px]
+                text-[14px]
                 font-semibold
                 text-[var(--cf-text)]
                 transition
@@ -1390,7 +1300,7 @@ function ContactRow({
                 mt-1
                 max-w-[190px]
                 truncate
-                text-[10px]
+                text-[11px]
                 text-[var(--cf-text-muted)]
               "
             >
@@ -1405,7 +1315,7 @@ function ContactRow({
         className="
           px-4
           py-4
-          text-[12px]
+          text-[13px]
           text-[var(--cf-text-secondary)]
         "
       >
@@ -1422,7 +1332,7 @@ function ContactRow({
           <a
             href={`mailto:${contact.email}`}
             className="
-              text-[12px]
+              text-[13px]
               text-[var(--cf-text-secondary)]
               transition
               hover:text-[var(--cf-primary)]
@@ -1433,7 +1343,7 @@ function ContactRow({
         ) : (
           <span
             className="
-              text-[12px]
+              text-[13px]
               text-[var(--cf-text-muted)]
             "
           >
@@ -1446,7 +1356,7 @@ function ContactRow({
         className="
           px-4
           py-4
-          text-[12px]
+          text-[13px]
           text-[var(--cf-text-secondary)]
         "
       >
@@ -1470,7 +1380,7 @@ function ContactRow({
             bg-[var(--cf-surface-soft)]
             px-2.5
             py-1.5
-            text-[10px]
+            text-[11px]
             font-semibold
             text-[var(--cf-text-secondary)]
           "
@@ -1485,7 +1395,7 @@ function ContactRow({
         className="
           px-4
           py-4
-          text-[13px]
+          text-[14px]
           font-semibold
           text-[var(--cf-text)]
         "
@@ -1499,7 +1409,7 @@ function ContactRow({
         className="
           px-4
           py-4
-          text-[13px]
+          text-[14px]
           font-semibold
           text-[var(--cf-text)]
         "
@@ -1513,7 +1423,7 @@ function ContactRow({
         className="
           px-4
           py-4
-          text-[11px]
+          text-[12px]
           text-[var(--cf-text-muted)]
         "
       >
@@ -1529,7 +1439,7 @@ function ContactRow({
         "
       >
         <Link
-          href={`/contacts/${contact.representativeLeadId}`}
+          href={`/contacts/${contact.id}`}
           aria-label={`Open ${contactName(contact)}`}
           className="
             flex
@@ -1591,7 +1501,7 @@ function ContactCard({
             justify-center
             rounded-xl
             bg-[var(--cf-primary-soft)]
-            text-[11px]
+            text-[12px]
             font-semibold
             text-[var(--cf-primary)]
           "
@@ -1608,11 +1518,11 @@ function ContactCard({
           "
         >
           <Link
-            href={`/contacts/${contact.representativeLeadId}`}
+            href={`/contacts/${contact.id}`}
             className="
               block
               truncate
-              text-[15px]
+              text-[16px]
               font-semibold
               text-[var(--cf-text)]
             "
@@ -1626,7 +1536,7 @@ function ContactCard({
             className="
               mt-1
               truncate
-              text-[12px]
+              text-[13px]
               text-[var(--cf-text-secondary)]
             "
           >
@@ -1637,7 +1547,7 @@ function ContactCard({
             className="
               mt-0.5
               truncate
-              text-[10px]
+              text-[11px]
               text-[var(--cf-text-muted)]
             "
           >
@@ -1647,7 +1557,7 @@ function ContactCard({
         </div>
 
         <Link
-          href={`/contacts/${contact.representativeLeadId}`}
+          href={`/contacts/${contact.id}`}
           className="
             flex
             h-9
@@ -1722,7 +1632,7 @@ function ContactCard({
               border
               border-[var(--cf-border-soft)]
               px-3
-              text-[11px]
+              text-[12px]
               text-[var(--cf-text-secondary)]
             "
           >
@@ -1752,7 +1662,7 @@ function ContactCard({
               border
               border-[var(--cf-border-soft)]
               px-3
-              text-[11px]
+              text-[12px]
               text-[var(--cf-text-secondary)]
             "
           >
@@ -1795,7 +1705,7 @@ function MetricBox({
     >
       <p
         className="
-          text-[9px]
+          text-[10px]
           font-semibold
           uppercase
           tracking-[0.06em]
@@ -1809,7 +1719,7 @@ function MetricBox({
         className="
           mt-1.5
           truncate
-          text-[12px]
+          text-[13px]
           font-semibold
           text-[var(--cf-text)]
         "
@@ -1852,7 +1762,7 @@ function SummaryChip({
         rounded-xl
         border
         px-3.5
-        text-[13px]
+        text-[14px]
         font-medium
 
         ${
@@ -1919,7 +1829,7 @@ function ContactsLoading() {
 
         <p
           className="
-            text-[13px]
+            text-[14px]
             text-[var(--cf-text-secondary)]
           "
         >
@@ -1989,14 +1899,14 @@ function ContactsEmpty({
         className="
           mt-2
           max-w-[420px]
-          text-[13px]
+          text-[14px]
           leading-6
           text-[var(--cf-text-secondary)]
         "
       >
         {search
           ? 'No contacts match the current search and filter.'
-          : 'Contacts are created from the people attached to your opportunities.'}
+          : 'Contacts are created and linked automatically from the people attached to your opportunities.'}
       </p>
 
       <button
@@ -2010,7 +1920,7 @@ function ContactsEmpty({
           border-[var(--cf-border)]
           bg-[var(--cf-surface)]
           px-4
-          text-[12px]
+          text-[13px]
           font-semibold
           text-[var(--cf-text)]
           transition

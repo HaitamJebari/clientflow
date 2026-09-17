@@ -4,7 +4,6 @@ import {
   ArrowRight,
   Bot,
   Clock3,
-  Eye,
   MoreHorizontal,
   Pencil,
   Sparkles,
@@ -21,8 +20,6 @@ import {
 import {
   createPortal,
 } from 'react-dom';
-
-import Link from 'next/link';
 
 import type {
   Lead,
@@ -93,7 +90,7 @@ export function LeadMobileCard({
               border
               border-[var(--cf-border)]
               bg-[var(--cf-surface-soft)]
-              text-[11px]
+              text-[12px]
               font-semibold
               text-[var(--cf-text-secondary)]
             "
@@ -129,20 +126,17 @@ export function LeadMobileCard({
                 gap-2
               "
             >
-              <Link
-                href={`/leads/${lead.id}`}
+              <p
                 className="
                   truncate
-                  text-[15px]
+                  text-[16px]
                   font-semibold
                   text-[var(--cf-text)]
-                  transition
-                  hover:text-[var(--cf-primary)]
                 "
               >
                 {lead.firstName}{' '}
                 {lead.lastName}
-              </Link>
+              </p>
 
               <TemperatureBadge
                 temperature={
@@ -155,7 +149,7 @@ export function LeadMobileCard({
               className="
                 mt-[2px]
                 truncate
-                text-[12px]
+                text-[13px]
                 text-[var(--cf-text-secondary)]
               "
             >
@@ -166,7 +160,7 @@ export function LeadMobileCard({
               className="
                 mt-[2px]
                 truncate
-                text-[11px]
+                text-[12px]
                 text-[var(--cf-text-muted)]
               "
             >
@@ -230,7 +224,7 @@ export function LeadMobileCard({
             flex
             items-center
             gap-2
-            text-[11px]
+            text-[12px]
             text-[var(--cf-text-secondary)]
           "
         >
@@ -250,7 +244,7 @@ export function LeadMobileCard({
             bg-[var(--cf-primary-soft)]
             px-2
             py-1
-            text-[9px]
+            text-[10px]
             font-medium
             text-[var(--cf-primary)]
           "
@@ -303,7 +297,7 @@ export function LeadMobileCard({
 
             <span
               className="
-                text-[11px]
+                text-[12px]
                 font-semibold
                 text-[var(--cf-text)]
               "
@@ -317,7 +311,7 @@ export function LeadMobileCard({
               flex
               items-center
               gap-1
-              text-[9px]
+              text-[10px]
               font-medium
               text-[var(--cf-primary)]
             "
@@ -333,7 +327,7 @@ export function LeadMobileCard({
         <p
           className="
             mt-3
-            text-[12px]
+            text-[13px]
             leading-5
             text-[var(--cf-text-secondary)]
           "
@@ -371,7 +365,7 @@ export function LeadMobileCard({
         <div>
           <p
             className="
-              text-[10px]
+              text-[11px]
               font-semibold
               uppercase
               tracking-[0.08em]
@@ -384,7 +378,7 @@ export function LeadMobileCard({
           <p
             className="
               mt-1
-              text-[13px]
+              text-[14px]
               font-semibold
               text-[var(--cf-text)]
             "
@@ -426,7 +420,7 @@ function DataBox({
     >
       <p
         className="
-          text-[9px]
+          text-[10px]
           font-semibold
           uppercase
           tracking-[0.07em]
@@ -440,7 +434,7 @@ function DataBox({
         className="
           mt-1.5
           truncate
-          text-[12px]
+          text-[13px]
           font-semibold
           text-[var(--cf-text)]
         "
@@ -480,7 +474,7 @@ function TemperatureBadge({
         rounded-full
         px-2
         py-[3px]
-        text-[9px]
+        text-[10px]
         font-semibold
         ${styles}
       `}
@@ -574,7 +568,7 @@ function LeadActionsMenu({
     }
 
     const menuWidth = 210;
-    const menuHeight = 164;
+    const menuHeight = 112;
     const viewportPadding = 12;
     const gap = 8;
 
@@ -854,7 +848,7 @@ function LeadActionsMenu({
                     <p
                       className="
                         truncate
-                        text-[14px]
+                        text-[15px]
                         font-semibold
                         text-[var(--cf-text)]
                       "
@@ -867,7 +861,7 @@ function LeadActionsMenu({
                       className="
                         mt-0.5
                         truncate
-                        text-[12px]
+                        text-[13px]
                         text-[var(--cf-text-secondary)]
                       "
                     >
@@ -902,65 +896,6 @@ function LeadActionsMenu({
                 </div>
               )}
 
-              <Link
-                href={`/leads/${lead.id}`}
-                role="menuitem"
-                onClick={closeMenu}
-                className={`
-                  flex
-                  w-full
-                  items-center
-                  gap-3
-
-                  rounded-xl
-
-                  text-left
-                  font-medium
-                  text-[var(--cf-text)]
-
-                  transition
-
-                  hover:bg-[var(--cf-surface-soft)]
-
-                  ${
-                    isMobile
-                      ? `
-                          min-h-12
-                          px-3.5
-                          py-3
-                          text-[15px]
-                        `
-                      : `
-                          px-3
-                          py-2.5
-                          text-[13px]
-                        `
-                  }
-                `}
-              >
-                <span
-                  className="
-                    flex
-                    h-8
-                    w-8
-                    shrink-0
-                    items-center
-                    justify-center
-                    rounded-lg
-                    bg-[var(--cf-surface-soft)]
-                    text-[var(--cf-text-secondary)]
-                  "
-                >
-                  <Eye
-                    size={15}
-                  />
-                </span>
-
-                <span>
-                  View details
-                </span>
-              </Link>
-
               <button
                 type="button"
                 role="menuitem"
@@ -990,12 +925,12 @@ function LeadActionsMenu({
                           min-h-12
                           px-3.5
                           py-3
-                          text-[15px]
+                          text-[16px]
                         `
                       : `
                           px-3
                           py-2.5
-                          text-[13px]
+                          text-[14px]
                         `
                   }
                 `}
@@ -1054,12 +989,12 @@ function LeadActionsMenu({
                           min-h-12
                           px-3.5
                           py-3
-                          text-[15px]
+                          text-[16px]
                         `
                       : `
                           px-3
                           py-2.5
-                          text-[13px]
+                          text-[14px]
                         `
                   }
                 `}

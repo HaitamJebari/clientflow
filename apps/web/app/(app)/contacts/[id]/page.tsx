@@ -20,7 +20,6 @@ import Link from 'next/link';
 import {
   useCallback,
   useEffect,
-  useMemo,
   useState,
 } from 'react';
 
@@ -89,90 +88,44 @@ interface ApiLead {
   updatedAt?: string | null;
 }
 
-interface LeadsListResponse {
-  data?: ApiLead[];
-  leads?: ApiLead[];
+interface ContactDetailsResponse {
+  id: string;
+
+  firstName: string;
+  lastName?: string | null;
+
+  email?: string | null;
+  phone?: string | null;
+
+  company?: string | null;
+  jobTitle?: string | null;
+  website?: string | null;
+
+  source?: string | null;
+
+  activeOpportunityCount: number;
+  opportunityCount: number;
+
+  openValueCents: number;
+  lifetimeValueCents: number;
+
+  latestActivityAt?: string | null;
+
+  opportunities: ApiLead[];
 }
 
 /* =========================================================
    HELPERS
 ========================================================= */
 
-function extractLeads(
-  payload:
-    | ApiLead[]
-    | LeadsListResponse,
-) {
-  if (Array.isArray(payload)) {
-    return payload;
-  }
-
-  if (
-    Array.isArray(payload.data)
-  ) {
-    return payload.data;
-  }
-
-  if (
-    Array.isArray(payload.leads)
-  ) {
-    return payload.leads;
-  }
-
-  return [];
-}
-
-function extractLead(
-  payload:
-    | ApiLead
-    | {
-        data?: ApiLead;
-        lead?: ApiLead;
-      },
-) {
-  if (
-    'id' in payload &&
-    typeof payload.id ===
-      'string'
-  ) {
-    return payload;
-  }
-
-  return (
-    ('data' in payload ? payload.data : undefined) ??
-    ('lead' in payload ? payload.lead : undefined) ??
-    null
-  );
-}
-
-function identityKey(
-  lead:
-    ApiLead,
-) {
-  const email =
-    lead.email
-      ?.trim()
-      .toLowerCase();
-
-  if (email) {
-    return `email:${email}`;
-  }
-
-  const phone =
-    lead.phone
-      ?.replace(/\s+/g, '')
-      .trim();
-
-  if (phone) {
-    return `phone:${phone}`;
-  }
-
-  return `lead:${lead.id}`;
-}
-
 function fullName(
   lead:
-    ApiLead,
+    Pick<
+      ContactDetailsResponse,
+      | 'firstName'
+      | 'lastName'
+    >
+    | ApiLead,
 ) {
   return [
     lead.firstName,
@@ -185,7 +138,13 @@ function fullName(
 
 function getInitials(
   lead:
-    ApiLead,
+    Pick<
+      ContactDetailsResponse,
+      | 'firstName'
+      | 'lastName'
+      | 'company'
+    >
+    | ApiLead,
 ) {
   const first =
     lead.firstName
@@ -312,15 +271,11 @@ export default function ContactDetailsPage() {
     contactLead,
     setContactLead,
   ] =
-    useState<ApiLead | null>(
+    useState<
+      ContactDetailsResponse | null
+    >(
       null,
     );
-
-  const [
-    allLeads,
-    setAllLeads,
-  ] =
-    useState<ApiLead[]>([]);
 
   const [
     loading,
@@ -332,7 +287,9 @@ export default function ContactDetailsPage() {
     error,
     setError,
   ] =
-    useState<string | null>(
+    useState<
+      string | null
+    >(
       null,
     );
 
@@ -348,58 +305,35 @@ export default function ContactDetailsPage() {
             'Contact not found.',
           );
 
-          setLoading(false);
+          setLoading(
+            false,
+          );
+
           return;
         }
 
-        setLoading(true);
-        setError(null);
+        setLoading(
+          true,
+        );
+
+        setError(
+          null,
+        );
 
         try {
-          const [
-            leadResponse,
-            listResponse,
-          ] =
-            await Promise.all([
-              request<
-                | ApiLead
-                | {
-                    data?: ApiLead;
-                    lead?: ApiLead;
-                  }
-              >(
-                `/leads/${id}`,
-              ),
-
-              request<
-                | ApiLead[]
-                | LeadsListResponse
-              >(
-                '/leads?page=1&pageSize=100&sort=company',
-              ),
-            ]);
-
-          const lead =
-            extractLead(
-              leadResponse,
+          const response =
+            await request<
+              ContactDetailsResponse
+            >(
+              `/contacts/${id}`,
             );
-
-          if (!lead) {
-            throw new Error(
-              'Contact data was not returned by the API.',
-            );
-          }
 
           setContactLead(
-            lead,
+            response,
           );
-
-          setAllLeads(
-            extractLeads(
-              listResponse,
-            ),
-          );
-        } catch (loadError) {
+        } catch (
+          loadError
+        ) {
           if (
             loadError instanceof
             Error
@@ -413,7 +347,9 @@ export default function ContactDetailsPage() {
             );
           }
         } finally {
-          setLoading(false);
+          setLoading(
+            false,
+          );
         }
       },
       [
@@ -425,42 +361,6 @@ export default function ContactDetailsPage() {
   useEffect(() => {
     void loadContact();
   }, [loadContact]);
-
-  const relatedOpportunities =
-    useMemo(() => {
-      if (!contactLead) {
-        return [];
-      }
-
-      const key =
-        identityKey(
-          contactLead,
-        );
-
-      return allLeads
-        .filter(
-          (lead) =>
-            identityKey(
-              lead,
-            ) === key,
-        )
-        .sort(
-          (a, b) =>
-            new Date(
-              b.updatedAt ??
-                b.createdAt ??
-                0,
-            ).getTime() -
-            new Date(
-              a.updatedAt ??
-                a.createdAt ??
-                0,
-            ).getTime(),
-        );
-    }, [
-      allLeads,
-      contactLead,
-    ]);
 
   if (loading) {
     return (
@@ -485,6 +385,9 @@ export default function ContactDetailsPage() {
     );
   }
 
+  const relatedOpportunities =
+    contactLead.opportunities;
+
   const activeOpportunities =
     relatedOpportunities.filter(
       (lead) =>
@@ -493,61 +396,14 @@ export default function ContactDetailsPage() {
         ),
     );
 
-  const wonOpportunities =
-    relatedOpportunities.filter(
-      (lead) =>
-        lead.stage ===
-        'WON',
-    );
-
   const openValue =
-    activeOpportunities.reduce(
-      (
-        total,
-        lead,
-      ) =>
-        total +
-        (lead.valueCents ??
-          0),
-      0,
-    );
+    contactLead.openValueCents;
 
   const lifetimeValue =
-    wonOpportunities.reduce(
-      (
-        total,
-        lead,
-      ) =>
-        total +
-        (lead.valueCents ??
-          0),
-      0,
-    );
+    contactLead.lifetimeValueCents;
 
   const latestActivity =
-    relatedOpportunities
-      .map(
-        (lead) =>
-          lead.lastActivityAt ??
-          lead.updatedAt ??
-          lead.createdAt ??
-          null,
-      )
-      .filter(
-        (
-          value,
-        ): value is string =>
-          Boolean(value),
-      )
-      .sort(
-        (a, b) =>
-          new Date(
-            b,
-          ).getTime() -
-          new Date(
-            a,
-          ).getTime(),
-      )[0] ??
+    contactLead.latestActivityAt ??
     null;
 
   return (
@@ -567,7 +423,7 @@ export default function ContactDetailsPage() {
           gap-2
           rounded-xl
           px-2
-          text-[13px]
+          text-[14px]
           font-medium
           text-[var(--cf-text-secondary)]
           transition
@@ -628,7 +484,7 @@ export default function ContactDetailsPage() {
                 justify-center
                 rounded-2xl
                 bg-[var(--cf-primary-soft)]
-                text-[15px]
+                text-[16px]
                 font-semibold
                 text-[var(--cf-primary)]
 
@@ -670,7 +526,7 @@ export default function ContactDetailsPage() {
                   flex-wrap
                   gap-x-3
                   gap-y-1.5
-                  text-[13px]
+                  text-[14px]
                   text-[var(--cf-text-secondary)]
                 "
               >
@@ -721,7 +577,7 @@ export default function ContactDetailsPage() {
                   border-[var(--cf-border)]
                   bg-[var(--cf-surface)]
                   px-3.5
-                  text-[12px]
+                  text-[13px]
                   font-semibold
                   text-[var(--cf-text)]
                   transition
@@ -748,7 +604,7 @@ export default function ContactDetailsPage() {
                   rounded-xl
                   bg-[var(--cf-primary)]
                   px-3.5
-                  text-[12px]
+                  text-[13px]
                   font-semibold
                   text-white
                   transition
@@ -1124,7 +980,7 @@ function Metric({
       <p
         className="
           mt-3
-          text-[9px]
+          text-[10px]
           font-semibold
           uppercase
           tracking-[0.07em]
@@ -1138,7 +994,7 @@ function Metric({
         className="
           mt-1
           truncate
-          text-[13px]
+          text-[14px]
           font-semibold
           text-[var(--cf-text)]
         "
@@ -1189,7 +1045,7 @@ function DetailCard({
       <p
         className="
           mt-1
-          text-[12px]
+          text-[13px]
           leading-5
           text-[var(--cf-text-muted)]
         "
@@ -1262,7 +1118,7 @@ function InfoItem({
       >
         <p
           className="
-            text-[9px]
+            text-[10px]
             font-semibold
             uppercase
             tracking-[0.07em]
@@ -1276,7 +1132,7 @@ function InfoItem({
           className="
             mt-1
             truncate
-            text-[12px]
+            text-[13px]
             font-medium
             text-[var(--cf-text)]
           "
@@ -1367,7 +1223,7 @@ function OpportunityRow({
         >
           <span
             className="
-              text-[13px]
+              text-[14px]
               font-semibold
               text-[var(--cf-text)]
             "
@@ -1388,7 +1244,7 @@ function OpportunityRow({
         <p
           className="
             mt-1
-            text-[11px]
+            text-[12px]
             text-[var(--cf-text-muted)]
           "
         >
@@ -1414,7 +1270,7 @@ function OpportunityRow({
       >
         <span
           className="
-            text-[13px]
+            text-[14px]
             font-semibold
             text-[var(--cf-text)]
           "
@@ -1492,7 +1348,7 @@ function ActivityRow({
       >
         <p
           className="
-            text-[12px]
+            text-[13px]
             font-semibold
             text-[var(--cf-text)]
           "
@@ -1508,7 +1364,7 @@ function ActivityRow({
         <p
           className="
             mt-1
-            text-[11px]
+            text-[12px]
             text-[var(--cf-text-muted)]
           "
         >
@@ -1523,7 +1379,7 @@ function ActivityRow({
           <p
             className="
               mt-1
-              text-[11px]
+              text-[12px]
               text-[var(--cf-primary)]
             "
           >
@@ -1563,7 +1419,7 @@ function RelationshipItem({
     >
       <span
         className="
-          text-[11px]
+          text-[12px]
           text-[var(--cf-text-muted)]
         "
       >
@@ -1575,7 +1431,7 @@ function RelationshipItem({
           max-w-[60%]
           truncate
           text-right
-          text-[12px]
+          text-[13px]
           font-semibold
           text-[var(--cf-text)]
         "
@@ -1629,7 +1485,7 @@ function ComingSoonBlock({
       <p
         className="
           mt-3
-          text-[13px]
+          text-[14px]
           font-semibold
         "
       >
@@ -1639,7 +1495,7 @@ function ComingSoonBlock({
       <p
         className="
           mt-1.5
-          text-[12px]
+          text-[13px]
           leading-5
           text-[var(--cf-text-secondary)]
         "
@@ -1690,7 +1546,7 @@ function StagePill({
         rounded-full
         px-2.5
         py-1
-        text-[9px]
+        text-[10px]
         font-semibold
         ${classes}
       `}
@@ -1716,7 +1572,7 @@ function EmptyState({
         bg-[var(--cf-surface-soft)]
         px-4
         py-5
-        text-[13px]
+        text-[14px]
         text-[var(--cf-text-muted)]
       "
     >
@@ -1761,7 +1617,7 @@ function ContactLoading() {
 
         <p
           className="
-            text-[13px]
+            text-[14px]
             text-[var(--cf-text-secondary)]
           "
         >
@@ -1825,7 +1681,7 @@ function ContactError({
       <p
         className="
           mt-2
-          text-[13px]
+          text-[14px]
           leading-6
           text-[var(--cf-text-secondary)]
         "
@@ -1850,7 +1706,7 @@ function ContactError({
             border
             border-[var(--cf-border)]
             px-4
-            text-[12px]
+            text-[13px]
             font-semibold
           "
         >
@@ -1865,7 +1721,7 @@ function ContactError({
             rounded-xl
             bg-[var(--cf-primary)]
             px-4
-            text-[12px]
+            text-[13px]
             font-semibold
             text-white
           "

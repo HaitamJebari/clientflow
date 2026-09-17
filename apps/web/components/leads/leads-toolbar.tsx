@@ -157,7 +157,7 @@ export function LeadsToolbar({
               bg-[var(--cf-surface-soft)]
               pl-11
               pr-11
-              text-[15px]
+              text-[16px]
               text-[var(--cf-text)]
               outline-none
               transition
@@ -291,7 +291,7 @@ export function LeadsToolbar({
           >
             <span
               className="
-                text-[12px]
+                text-[13px]
                 font-medium
                 text-[var(--cf-text-muted)]
               "
@@ -382,7 +382,7 @@ export function LeadsToolbar({
             <span
               className="
                 whitespace-nowrap
-                text-[13px]
+                text-[14px]
                 font-medium
                 text-[var(--cf-text-muted)]
               "
@@ -453,7 +453,7 @@ function FilterButton({
           : 'px-4'
         }
         border
-        text-[14px]
+        text-[15px]
         font-medium
         transition-all
         duration-150
@@ -481,7 +481,7 @@ function FilterButton({
       'attention' ? (
         <span
           className="
-            text-[15px]
+            text-[16px]
             leading-none
             text-[var(--cf-primary)]
           "
@@ -581,8 +581,8 @@ function SortSelect({
 
           ${
             mobile
-              ? 'text-[13px]'
-              : 'text-[14px]'
+              ? 'text-[14px]'
+              : 'text-[15px]'
           }
         `}
       >
@@ -644,11 +644,11 @@ function AddLeadButton({
             ? `
                 w-full
                 px-3
-                text-[14px]
+                text-[15px]
               `
             : `
                 px-5
-                text-[14px]
+                text-[15px]
               `
         }
       `}
