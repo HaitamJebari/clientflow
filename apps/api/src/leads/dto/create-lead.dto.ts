@@ -17,7 +17,7 @@ import {
   LeadQualification,
   LeadStage,
   LeadTemperature,
-} from '../../../generated/prisma/enums';
+} from '../../generated/prisma/enums';
 
 export class CreateLeadDto {
   @IsString()

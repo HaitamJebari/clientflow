@@ -11,12 +11,12 @@ import type {
   Request,
 } from 'express';
 
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
-import { SessionGuard } from '../guards/session.guard';
-import { JwtPayload } from '../types/jwt-payload.type';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { SessionGuard } from '../auth/guards/session.guard';
+import { JwtPayload } from '../auth/types/jwt-payload.type';
 
 import { ContactsService } from './contacts.service';
-import { QueryContactsDto } from './dto/query-contacts.dto';
+import { QueryContactsDto } from '../leads/dto/query-contacts.dto';
 
 type AuthenticatedRequest =
   Request & {

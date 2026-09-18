@@ -38,6 +38,15 @@ enum LeadQualification {
   UNQUALIFIED
 }
 
+enum ProposalStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
 model User {
   id String @id @default(uuid())
 
@@ -68,10 +77,11 @@ model Organization {
   website  String?
   industry String?
 
-  members  OrganizationMember[]
-  sessions Session[]
-  leads    Lead[]
-  contacts Contact[]
+  members   OrganizationMember[]
+  sessions  Session[]
+  leads     Lead[]
+  contacts  Contact[]
+  proposals Proposal[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -143,6 +153,7 @@ model Contact {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   leads        Lead[]
+  proposals    Proposal[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -203,6 +214,7 @@ model Lead {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   contact      Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  proposals    Proposal[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -224,4 +236,47 @@ model Lead {
   @@index([organizationId, updatedAt])
   @@index([organizationId, company])
   @@map("leads")
+}
+
+model Proposal {
+  id String @id @default(uuid())
+
+  organizationId String
+  leadId         String
+  contactId      String?
+
+  title String
+
+  status ProposalStatus @default(DRAFT)
+
+  amountCents Int
+  currency    String @default("EUR")
+
+  summary  String?
+  scope    String?
+  timeline String?
+  terms    String?
+
+  validUntil DateTime?
+
+  sentAt     DateTime?
+  viewedAt   DateTime?
+  acceptedAt DateTime?
+  rejectedAt DateTime?
+
+  viewCount Int @default(0)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead         Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  contact      Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([organizationId, status, updatedAt])
+  @@index([organizationId, leadId])
+  @@index([organizationId, contactId])
+  @@index([organizationId, createdAt])
+  @@map("proposals")
 }

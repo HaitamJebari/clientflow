@@ -14,7 +14,7 @@ const health_module_1 = require("./health/health.module");
 const auth_module_1 = require("./auth/auth.module");
 const users_module_1 = require("./users/users.module");
 const organizations_module_1 = require("./organizations/organizations.module");
-const leads_module_1 = require("./auth/leads/leads.module");
+const leads_module_1 = require("./leads/leads.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;

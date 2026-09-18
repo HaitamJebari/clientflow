@@ -8,15 +8,23 @@ import {
 
 import {
   PrismaModule,
-} from '../../prisma/prisma.module';
+} from '../prisma/prisma.module';
 
 import {
   ContactsController,
-} from './contacts.controller';
+} from '../contacts/contacts.controller';
+
+import {
+  DashboardController,
+} from '../dashboard/dashboard.controller';
 
 import {
   ContactsService,
-} from './contacts.service';
+} from '../contacts/contacts.service';
+
+import {
+  DashboardService,
+} from '../dashboard/dashboard.service';
 
 import {
   LeadsController,
@@ -39,11 +47,13 @@ import {
   controllers: [
     LeadsController,
     ContactsController,
+    DashboardController,
   ],
 
   providers: [
     LeadsService,
     ContactsService,
+    DashboardService,
   ],
 
   exports: [

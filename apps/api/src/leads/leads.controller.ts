@@ -13,8 +13,8 @@ import {
 
 import type { Request } from 'express';
 
-import { SessionGuard } from '../guards/session.guard';
-import { JwtPayload } from '../types/jwt-payload.type';
+import { SessionGuard } from '../auth/guards/session.guard';
+import { JwtPayload } from '../auth/types/jwt-payload.type';
 
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { QueryLeadsDto } from './dto/query-leads.dto';
@@ -22,7 +22,7 @@ import { QueryPipelineDto } from './dto/query-pipeline.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { LeadsService } from './leads.service';
 
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 type AuthenticatedRequest = Request & {
   user: JwtPayload;

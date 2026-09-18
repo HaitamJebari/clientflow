@@ -10,9 +10,9 @@ import {
 import {
   LeadStage,
   LeadTemperature,
-} from '../../generated/prisma/enums';
+} from '../generated/prisma/enums';
 
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { QueryLeadsDto } from './dto/query-leads.dto';

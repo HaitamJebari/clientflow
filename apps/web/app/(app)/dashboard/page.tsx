@@ -3,119 +3,592 @@
 import {
   ArrowRight,
   ArrowUpRight,
+  AlertCircle,
   CheckCircle2,
   Clock3,
   FileText,
+  LoaderCircle,
   MessageSquareText,
   MoreHorizontal,
+  RefreshCw,
   Sparkles,
   Target,
   TrendingUp,
   UsersRound,
 } from 'lucide-react';
 
-import type { ElementType } from 'react';
+import Link from 'next/link';
+
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+
+import type {
+  ElementType,
+} from 'react';
 
 import { useAuth } from '@/components/providers/auth-provider';
 
 
 /* =========================================================
-   MOCK DASHBOARD DATA
+   DASHBOARD DATA
 ========================================================= */
 
-const attentionItems = [
-  {
-    company: 'Acme Studio',
-    initials: 'AS',
-    value: '€8,500',
-    title: 'Follow up on proposal',
-    description:
-      'Proposal opened 3 times. No reply for 4 days.',
-    reasons: [
+type ApiLeadStage =
+  | 'NEW'
+  | 'CONTACTED'
+  | 'QUALIFIED'
+  | 'PROPOSAL'
+  | 'NEGOTIATION';
+
+type ApiLeadTemperature =
+  | 'HOT'
+  | 'WARM'
+  | 'COLD';
+
+interface DashboardAttentionLead {
+  id: string;
+
+  firstName: string;
+  lastName?: string | null;
+
+  company?: string | null;
+
+  stage: ApiLeadStage;
+
+  temperature?:
+    | ApiLeadTemperature
+    | null;
+
+  valueCents: number;
+  currency: string;
+
+  nextFollowUpAt?:
+    | string
+    | null;
+
+  lastActivityAt?:
+    | string
+    | null;
+
+  updatedAt: string;
+
+  aiNextBestAction?:
+    | string
+    | null;
+}
+
+interface DashboardStage {
+  stage: ApiLeadStage;
+  count: number;
+  totalValueCents: number;
+}
+
+interface DashboardOverview {
+  metrics: {
+    openPipelineValueCents:
+      number;
+
+    activeLeadCount:
+      number;
+
+    hotActiveLeadCount:
+      number;
+
+    conversionRate:
+      number | null;
+
+    closedCount:
+      number;
+
+    wonCount:
+      number;
+
+    wonRevenueCents:
+      number;
+
+    currency:
+      string;
+  };
+
+  pipelineStages:
+    DashboardStage[];
+
+  attention:
+    DashboardAttentionLead[];
+
+  generatedAt:
+    string;
+}
+
+interface AttentionPresentation {
+  id: string;
+  company: string;
+  initials: string;
+  value: string;
+  title: string;
+  description: string;
+  reasons: string[];
+  action: string;
+  accent: string;
+  icon: ElementType;
+}
+
+const stageLabels:
+  Record<
+    ApiLeadStage,
+    string
+  > = {
+    NEW: 'New',
+    CONTACTED:
+      'Contacted',
+    QUALIFIED:
+      'Qualified',
+    PROPOSAL:
+      'Proposal',
+    NEGOTIATION:
+      'Negotiation',
+  };
+
+function formatMoney(
+  valueCents: number,
+  currency = 'EUR',
+) {
+  return new Intl.NumberFormat(
+    'en-IE',
+    {
+      style:
+        'currency',
+
+      currency,
+
+      maximumFractionDigits:
+        0,
+    },
+  ).format(
+    valueCents / 100,
+  );
+}
+
+function initialsForLead(
+  lead:
+    DashboardAttentionLead,
+) {
+  const first =
+    lead.firstName
+      ?.trim()?.[0] ??
+    '';
+
+  const last =
+    lead.lastName
+      ?.trim()?.[0] ??
+    '';
+
+  return (
+    `${first}${last}`
+      .toUpperCase() ||
+    lead.company
+      ?.slice(0, 2)
+      .toUpperCase() ||
+    'OP'
+  );
+}
+
+function leadDisplayName(
+  lead:
+    DashboardAttentionLead,
+) {
+  return (
+    lead.company?.trim() ||
+    [
+      lead.firstName,
+      lead.lastName,
+    ]
+      .filter(Boolean)
+      .join(' ') ||
+    'Opportunity'
+  );
+}
+
+function isFollowUpDue(
+  value?:
+    | string
+    | null,
+) {
+  if (!value) {
+    return false;
+  }
+
+  const date =
+    new Date(value);
+
+  return (
+    !Number.isNaN(
+      date.getTime(),
+    ) &&
+    date.getTime() <=
+      Date.now()
+  );
+}
+
+function stageAction(
+  stage:
+    ApiLeadStage,
+) {
+  switch (stage) {
+    case 'NEW':
+      return 'Qualify lead';
+
+    case 'CONTACTED':
+      return 'Review conversation';
+
+    case 'QUALIFIED':
+      return 'Prepare next step';
+
+    case 'PROPOSAL':
+      return 'Review proposal';
+
+    case 'NEGOTIATION':
+      return 'Review negotiation';
+
+    default:
+      return 'Review opportunity';
+  }
+}
+
+function attentionPresentation(
+  lead:
+    DashboardAttentionLead,
+): AttentionPresentation {
+  const followUpDue =
+    isFollowUpDue(
+      lead.nextFollowUpAt,
+    );
+
+  const hot =
+    lead.temperature ===
+    'HOT';
+
+  const reasons:
+    string[] = [];
+
+  if (followUpDue) {
+    reasons.push(
+      'Follow-up due',
+    );
+  }
+
+  if (hot) {
+    reasons.push(
+      'Hot opportunity',
+    );
+  }
+
+  if (
+    lead.valueCents >=
+    500_000
+  ) {
+    reasons.push(
       'High-value opportunity',
-      'Recent proposal engagement',
-      'No response for 4 days',
-    ],
-    action: 'Review follow-up',
-    accent: 'warning',
-    icon: Clock3,
-  },
+    );
+  }
 
-  {
-    company: 'TechCorp',
-    initials: 'TC',
-    value: '€6,000',
-    title: 'Proposal is ready to send',
-    description:
-      'Scope and timeline are confirmed.',
-    reasons: [
-      'Budget confirmed',
-      'Project scope complete',
-    ],
-    action: 'Create proposal',
-    accent: 'primary',
-    icon: FileText,
-  },
+  if (
+    lead.stage ===
+      'PROPOSAL' ||
+    lead.stage ===
+      'NEGOTIATION'
+  ) {
+    reasons.push(
+      `${stageLabels[
+        lead.stage
+      ]} stage`,
+    );
+  }
 
-  {
-    company: 'StartupX',
-    initials: 'SX',
-    value: '€5,000',
-    title: 'Client asked about timeline',
-    description:
-      'A response could move this deal forward today.',
-    reasons: [
-      'Active conversation',
-      'Timeline question unanswered',
-    ],
-    action: 'Open conversation',
-    accent: 'info',
-    icon: MessageSquareText,
-  },
-];
+  if (
+    reasons.length === 0
+  ) {
+    reasons.push(
+      'Priority review',
+    );
+  }
 
+  const company =
+    leadDisplayName(
+      lead,
+    );
 
-const pipelineStages = [
-  {
-    label: 'New',
-    value: '€4.5k',
-    count: 5,
-    width: '18%',
-  },
+  const title =
+    followUpDue
+      ? 'Follow-up is due'
+      : hot
+        ? 'High-intent opportunity needs review'
+        : 'Opportunity needs review';
 
-  {
-    label: 'Qualified',
-    value: '€8k',
-    count: 4,
-    width: '33%',
-  },
+  const description =
+    followUpDue
+      ? `${company} has a scheduled follow-up that is due now.`
+      : `${company} is marked hot and is still in the ${stageLabels[
+          lead.stage
+        ].toLowerCase()} stage.`;
 
-  {
-    label: 'Proposal',
-    value: '€7k',
-    count: 3,
-    width: '29%',
-  },
+  return {
+    id:
+      lead.id,
 
-  {
-    label: 'Negotiation',
-    value: '€5k',
-    count: 2,
-    width: '20%',
-  },
-];
+    company,
 
+    initials:
+      initialsForLead(
+        lead,
+      ),
+
+    value:
+      formatMoney(
+        lead.valueCents,
+        lead.currency,
+      ),
+
+    title,
+    description,
+    reasons,
+
+    action:
+      lead.aiNextBestAction?.trim() ||
+      (
+        followUpDue
+          ? 'Review follow-up'
+          : stageAction(
+              lead.stage,
+            )
+      ),
+
+    accent:
+      followUpDue
+        ? 'warning'
+        : hot
+          ? 'primary'
+          : 'info',
+
+    icon:
+      followUpDue
+        ? Clock3
+        : hot
+          ? Target
+          : FileText,
+  };
+}
+
+function dashboardErrorMessage(
+  error: unknown,
+) {
+  if (
+    error instanceof
+    Error
+  ) {
+    return error.message;
+  }
+
+  return 'Unable to load the dashboard.';
+}
 
 /* =========================================================
    DASHBOARD PAGE
 ========================================================= */
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const {
+    user,
+    request,
+  } = useAuth();
 
   const firstName =
-    user?.firstName || 'there';
+    user?.firstName ||
+    'there';
 
+  const [
+    overview,
+    setOverview,
+  ] =
+    useState<
+      DashboardOverview | null
+    >(null);
+
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(true);
+
+  const [
+    error,
+    setError,
+  ] =
+    useState<
+      string | null
+    >(null);
+
+  const loadDashboard =
+    useCallback(
+      async (
+        showLoading =
+          true,
+      ) => {
+        if (showLoading) {
+          setLoading(
+            true,
+          );
+        }
+
+        setError(
+          null,
+        );
+
+        try {
+          const response =
+            await request<
+              DashboardOverview
+            >(
+              '/dashboard/overview',
+            );
+
+          setOverview(
+            response,
+          );
+        } catch (
+          loadError
+        ) {
+          setError(
+            dashboardErrorMessage(
+              loadError,
+            ),
+          );
+        } finally {
+          if (showLoading) {
+            setLoading(
+              false,
+            );
+          }
+        }
+      },
+      [request],
+    );
+
+  useEffect(() => {
+    void loadDashboard();
+  }, [loadDashboard]);
+
+  const attentionItems =
+    useMemo(
+      () =>
+        (
+          overview?.attention ??
+          []
+        ).map(
+          attentionPresentation,
+        ),
+      [overview],
+    );
+
+  const pipelineStages =
+    useMemo(
+      () => {
+        const stages =
+          overview?.pipelineStages ??
+          [];
+
+        const openValue =
+          overview?.metrics
+            .openPipelineValueCents ??
+          0;
+
+        return stages.map(
+          (stage) => {
+            const width =
+              openValue > 0
+                ? Math.max(
+                    stage.totalValueCents >
+                      0
+                      ? 6
+                      : 0,
+
+                    Math.round(
+                      (
+                        stage.totalValueCents /
+                        openValue
+                      ) * 100,
+                    ),
+                  )
+                : stage.count >
+                    0
+                  ? 12
+                  : 0;
+
+            return {
+              label:
+                stageLabels[
+                  stage.stage
+                ],
+
+              value:
+                formatMoney(
+                  stage.totalValueCents,
+                  overview?.metrics
+                    .currency ??
+                    'EUR',
+                ),
+
+              count:
+                stage.count,
+
+              width:
+                `${Math.min(
+                  width,
+                  100,
+                )}%`,
+            };
+          },
+        );
+      },
+      [overview],
+    );
+
+  const priorityValueCents =
+    (
+      overview?.attention ??
+      []
+    ).reduce(
+      (
+        total,
+        lead,
+      ) =>
+        total +
+        lead.valueCents,
+      0,
+    );
+
+  const priorityNames =
+    attentionItems.map(
+      (item) =>
+        item.company,
+    );
+
+  if (
+    loading &&
+    !overview
+  ) {
+    return (
+      <DashboardLoading
+        firstName={
+          firstName
+        }
+      />
+    );
+  }
 
   return (
     <div
@@ -181,7 +654,6 @@ export default function DashboardPage() {
             Workspace overview
           </div>
 
-
           <h1
             className="
               text-[30px]
@@ -199,7 +671,6 @@ export default function DashboardPage() {
           >
             Good afternoon, {firstName}
           </h1>
-
 
           <p
             className="
@@ -221,11 +692,10 @@ export default function DashboardPage() {
           </p>
         </div>
 
-
-        <button
-          type="button"
+        <Link
+          href="/leads"
           aria-label="Add opportunity"
-          data-tooltip="Create a new sales opportunity"
+          data-tooltip="Open leads and create a new sales opportunity"
           data-tooltip-position="bottom"
           className="
             flex
@@ -265,9 +735,94 @@ export default function DashboardPage() {
           <ArrowUpRight
             size={15}
           />
-        </button>
+        </Link>
       </div>
 
+      {error && (
+        <div
+          className="
+            mt-5
+            flex
+            flex-col
+            gap-3
+
+            rounded-xl
+            border
+            border-red-500/20
+            bg-red-500/5
+
+            px-4
+            py-3
+
+            sm:flex-row
+            sm:items-center
+            sm:justify-between
+          "
+        >
+          <div
+            className="
+              flex
+              items-start
+              gap-2.5
+            "
+          >
+            <AlertCircle
+              size={17}
+              className="
+                mt-0.5
+                shrink-0
+                text-red-500
+              "
+            />
+
+            <p
+              className="
+                text-[13px]
+                leading-5
+                text-red-600
+              "
+            >
+              {error}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              void loadDashboard()
+            }
+            className="
+              inline-flex
+              h-9
+              items-center
+              justify-center
+              gap-2
+              self-start
+
+              rounded-lg
+              border
+              border-red-500/20
+
+              px-3
+
+              text-[12px]
+              font-semibold
+              text-red-600
+
+              transition
+              hover:bg-red-500/10
+
+              sm:self-auto
+            "
+          >
+            <RefreshCw
+              size={13}
+            />
+
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* ===================================================
           METRICS
@@ -290,35 +845,73 @@ export default function DashboardPage() {
       >
         <MetricCard
           label="Open pipeline"
-          value="€24,500"
-          helper="+12% this month"
+          value={formatMoney(
+            overview?.metrics
+              .openPipelineValueCents ??
+              0,
+
+            overview?.metrics
+              .currency ??
+              'EUR',
+          )}
+          helper={`${overview?.metrics.activeLeadCount ?? 0} open opportunities`}
           icon={TrendingUp}
-          positive
         />
 
         <MetricCard
           label="Active leads"
-          value="18"
-          helper="6 high intent"
+          value={String(
+            overview?.metrics
+              .activeLeadCount ??
+              0,
+          )}
+          helper={`${overview?.metrics.hotActiveLeadCount ?? 0} hot right now`}
           icon={UsersRound}
         />
 
         <MetricCard
           label="Conversion"
-          value="22%"
-          helper="+3.2% vs last month"
+          value={
+            overview?.metrics
+              .conversionRate ===
+            null ||
+            overview?.metrics
+              .conversionRate ===
+              undefined
+              ? '—'
+              : `${overview.metrics.conversionRate}%`
+          }
+          helper={
+            (
+              overview?.metrics
+                .closedCount ??
+              0
+            ) > 0
+              ? 'Won ÷ closed opportunities'
+              : 'No closed opportunities yet'
+          }
           icon={Target}
-          positive
         />
 
         <MetricCard
           label="Deals won"
-          value="7"
-          helper="€31,800 revenue"
+          value={String(
+            overview?.metrics
+              .wonCount ??
+              0,
+          )}
+          helper={`${formatMoney(
+            overview?.metrics
+              .wonRevenueCents ??
+              0,
+
+            overview?.metrics
+              .currency ??
+              'EUR',
+          )} won revenue`}
           icon={CheckCircle2}
         />
       </div>
-
 
       {/* ===================================================
           NEEDS ATTENTION
@@ -345,10 +938,6 @@ export default function DashboardPage() {
           sm:mt-7
         "
       >
-        {/* =================================================
-            SECTION HEADER
-        ================================================= */}
-
         <div
           className="
             flex
@@ -402,7 +991,6 @@ export default function DashboardPage() {
               />
             </div>
 
-
             <div
               className="
                 min-w-0
@@ -430,7 +1018,6 @@ export default function DashboardPage() {
                   Needs attention
                 </h2>
 
-
                 <span
                   className="
                     rounded-full
@@ -448,10 +1035,9 @@ export default function DashboardPage() {
                     sm:text-[11px]
                   "
                 >
-                  3
+                  {attentionItems.length}
                 </span>
               </div>
-
 
               <p
                 className="
@@ -465,12 +1051,11 @@ export default function DashboardPage() {
                   sm:text-[14px]
                 "
               >
-                Ranked by urgency, value and
-                engagement.
+                Ranked using due follow-ups,
+                temperature and opportunity value.
               </p>
             </div>
           </div>
-
 
           <div
             className="
@@ -485,7 +1070,7 @@ export default function DashboardPage() {
               sm:text-[12px]
             "
           >
-            <Sparkles
+            <Target
               size={12}
               className="
                 shrink-0
@@ -494,31 +1079,80 @@ export default function DashboardPage() {
               "
             />
 
-            AI-assisted prioritization
+            Priority signals
           </div>
         </div>
 
-
-        {/* =================================================
-            ATTENTION ITEMS
-        ================================================= */}
-
         <div>
-          {attentionItems.map(
-            (item, index) => (
-              <AttentionItem
-                key={item.company}
-                {...item}
-                last={
-                  index ===
-                  attentionItems.length - 1
-                }
+          {attentionItems.length >
+          0 ? (
+            attentionItems.map(
+              (
+                item,
+                index,
+              ) => (
+                <AttentionItem
+                  key={
+                    item.id
+                  }
+                  {...item}
+                  last={
+                    index ===
+                    attentionItems.length -
+                      1
+                  }
+                />
+              ),
+            )
+          ) : (
+            <div
+              className="
+                flex
+                min-h-[170px]
+                flex-col
+                items-center
+                justify-center
+
+                px-5
+                py-8
+
+                text-center
+              "
+            >
+              <CheckCircle2
+                size={24}
+                className="
+                  text-[var(--cf-success)]
+                "
               />
-            ),
+
+              <p
+                className="
+                  mt-3
+                  text-[15px]
+                  font-semibold
+                  text-[var(--cf-text)]
+                "
+              >
+                No urgent opportunities
+              </p>
+
+              <p
+                className="
+                  mt-1
+                  max-w-[460px]
+                  text-[13px]
+                  leading-6
+                  text-[var(--cf-text-secondary)]
+                "
+              >
+                Nothing is currently overdue or marked hot.
+                Your pipeline still remains available below.
+              </p>
+            </div>
           )}
         </div>
       </section>
-
 
       {/* ===================================================
           LOWER GRID
@@ -537,10 +1171,6 @@ export default function DashboardPage() {
           xl:grid-cols-[1.4fr_.8fr]
         "
       >
-        {/* =================================================
-            PIPELINE
-        ================================================= */}
-
         <section
           className="
             min-w-0
@@ -591,7 +1221,6 @@ export default function DashboardPage() {
                 Pipeline
               </h2>
 
-
               <p
                 className="
                   mt-1.5
@@ -605,14 +1234,25 @@ export default function DashboardPage() {
                   sm:text-[14px]
                 "
               >
-                €24,500 across 14 open
-                opportunities
+                {formatMoney(
+                  overview?.metrics
+                    .openPipelineValueCents ??
+                    0,
+
+                  overview?.metrics
+                    .currency ??
+                    'EUR',
+                )}{' '}
+                across{' '}
+                {overview?.metrics
+                  .activeLeadCount ??
+                  0}{' '}
+                open opportunities
               </p>
             </div>
 
-
-            <button
-              type="button"
+            <Link
+              href="/pipeline"
               aria-label="View pipeline"
               data-tooltip="View every opportunity in your pipeline"
               data-tooltip-position="top"
@@ -639,9 +1279,8 @@ export default function DashboardPage() {
               <ArrowRight
                 size={13}
               />
-            </button>
+            </Link>
           </div>
-
 
           <div
             className="
@@ -655,7 +1294,9 @@ export default function DashboardPage() {
             {pipelineStages.map(
               (stage) => (
                 <div
-                  key={stage.label}
+                  key={
+                    stage.label
+                  }
                 >
                   <div
                     className="
@@ -688,7 +1329,6 @@ export default function DashboardPage() {
                         {stage.label}
                       </span>
 
-
                       <span
                         className="
                           text-[11px]
@@ -698,10 +1338,13 @@ export default function DashboardPage() {
                           sm:text-[12px]
                         "
                       >
-                        {stage.count} deals
+                        {stage.count}{' '}
+                        {stage.count ===
+                        1
+                          ? 'deal'
+                          : 'deals'}
                       </span>
                     </div>
-
 
                     <strong
                       className="
@@ -718,7 +1361,6 @@ export default function DashboardPage() {
                       {stage.value}
                     </strong>
                   </div>
-
 
                   <div
                     className="
@@ -753,7 +1395,6 @@ export default function DashboardPage() {
             )}
           </div>
         </section>
-
 
         {/* =================================================
             REVENUE BRIEF
@@ -804,7 +1445,6 @@ export default function DashboardPage() {
             "
           />
 
-
           <div
             className="
               relative
@@ -840,7 +1480,6 @@ export default function DashboardPage() {
                 />
               </div>
 
-
               <span
                 className="
                   rounded-full
@@ -864,7 +1503,6 @@ export default function DashboardPage() {
               </span>
             </div>
 
-
             <h3
               className="
                 mt-5
@@ -882,10 +1520,30 @@ export default function DashboardPage() {
                 sm:tracking-[-0.6px]
               "
             >
-              €19,500 could move forward
-              with three actions today.
+              {attentionItems.length >
+              0 ? (
+                <>
+                  {formatMoney(
+                    priorityValueCents,
+                    overview?.metrics
+                      .currency ??
+                      'EUR',
+                  )}{' '}
+                  is tied to{' '}
+                  {attentionItems.length}{' '}
+                  priority{' '}
+                  {attentionItems.length ===
+                  1
+                    ? 'action'
+                    : 'actions'}{' '}
+                  right now.
+                </>
+              ) : (
+                <>
+                  Your urgent queue is clear.
+                </>
+              )}
             </h3>
-
 
             <p
               className="
@@ -901,12 +1559,18 @@ export default function DashboardPage() {
                 sm:leading-7
               "
             >
-              Acme has recent proposal
-              engagement, TechCorp is ready
-              for a proposal and StartupX
-              is waiting for your answer.
+              {attentionItems.length >
+              0
+                ? `${priorityNames.join(
+                    ', ',
+                  )} ${
+                    attentionItems.length ===
+                    1
+                      ? 'needs'
+                      : 'need'
+                  } attention based on current ClientFlow signals.`
+                : 'No follow-up is overdue and no open opportunity is currently marked hot.'}
             </p>
-
 
             <div
               className="
@@ -917,25 +1581,37 @@ export default function DashboardPage() {
                 sm:space-y-3
               "
             >
-              <BriefRow
-                number="01"
-                text="Follow up with Acme"
-              />
-
-              <BriefRow
-                number="02"
-                text="Send TechCorp proposal"
-              />
-
-              <BriefRow
-                number="03"
-                text="Answer StartupX"
-              />
+              {attentionItems.length >
+              0 ? (
+                attentionItems.map(
+                  (
+                    item,
+                    index,
+                  ) => (
+                    <BriefRow
+                      key={
+                        item.id
+                      }
+                      number={String(
+                        index + 1,
+                      ).padStart(
+                        2,
+                        '0',
+                      )}
+                      text={`${item.action} — ${item.company}`}
+                    />
+                  ),
+                )
+              ) : (
+                <BriefRow
+                  number="✓"
+                  text="Keep reviewing new opportunities as they arrive"
+                />
+              )}
             </div>
 
-
-            <button
-              type="button"
+            <Link
+              href="/leads"
               aria-label="Review priorities"
               data-tooltip="Review today's highest-priority opportunities"
               data-tooltip-position="top"
@@ -944,6 +1620,7 @@ export default function DashboardPage() {
 
                 flex
                 h-11
+                w-fit
                 items-center
                 gap-2
 
@@ -971,9 +1648,91 @@ export default function DashboardPage() {
               <ArrowRight
                 size={12}
               />
-            </button>
+            </Link>
           </div>
         </section>
+      </div>
+    </div>
+  );
+}
+
+function DashboardLoading({
+  firstName,
+}: {
+  firstName: string;
+}) {
+  return (
+    <div
+      className="
+        cf-dashboard-enter
+        min-w-0
+        text-[var(--cf-text)]
+      "
+    >
+      <div
+        className="
+          flex
+          min-h-[420px]
+          flex-col
+          items-center
+          justify-center
+
+          rounded-[18px]
+          border
+          border-[var(--cf-border)]
+          bg-[var(--cf-surface)]
+
+          px-5
+          text-center
+
+          shadow-[var(--cf-shadow)]
+        "
+      >
+        <div
+          className="
+            flex
+            h-11
+            w-11
+            items-center
+            justify-center
+
+            rounded-xl
+            bg-[var(--cf-primary-soft)]
+
+            text-[var(--cf-primary)]
+          "
+        >
+          <LoaderCircle
+            size={19}
+            className="
+              animate-spin
+            "
+          />
+        </div>
+
+        <h1
+          className="
+            mt-4
+            text-[20px]
+            font-semibold
+            tracking-[-0.3px]
+          "
+        >
+          Loading your workspace, {firstName}
+        </h1>
+
+        <p
+          className="
+            mt-2
+            max-w-[420px]
+            text-[13px]
+            leading-6
+            text-[var(--cf-text-secondary)]
+          "
+        >
+          ClientFlow is calculating your live pipeline,
+          priorities and revenue signals.
+        </p>
       </div>
     </div>
   );
@@ -1118,6 +1877,7 @@ function MetricCard({
 ========================================================= */
 
 function AttentionItem({
+  id,
   company,
   initials,
   value,
@@ -1129,6 +1889,7 @@ function AttentionItem({
   accent,
   last,
 }: {
+  id: string;
   company: string;
   initials: string;
   value: string;
@@ -1383,8 +2144,8 @@ function AttentionItem({
       >
         {/* Main action */}
 
-        <button
-          type="button"
+        <Link
+          href={`/leads/${id}`}
           aria-label={`${action} for ${company}`}
           data-tooltip={`${action} for ${company}`}
           data-tooltip-position="top"
@@ -1454,7 +2215,7 @@ function AttentionItem({
               shrink-0
             "
           />
-        </button>
+        </Link>
 
 
         {/* More */}

@@ -5,9 +5,9 @@ import {
 
 import {
   LeadStage,
-} from '../../generated/prisma/enums';
+} from '../generated/prisma/enums';
 
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 import {
   QueryContactsDto,
