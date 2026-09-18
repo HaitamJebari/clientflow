@@ -3,8 +3,8 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
 
-import { ProposalsController } from './proposals.controller';
-import { ProposalsService } from './proposals.service';
+import { DashboardController } from './dashboard.controller';
+import { DashboardService } from './dashboard.service';
 import { PassportModule } from '@nestjs/passport';
 
 @Module({
@@ -19,15 +19,11 @@ PassportModule.register({
   ],
 
   controllers: [
-    ProposalsController,
+    DashboardController,
   ],
 
   providers: [
-    ProposalsService,
-  ],
-
-  exports: [
-    ProposalsService,
+    DashboardService,
   ],
 })
-export class ProposalsModule {}
+export class DashboardModule {}

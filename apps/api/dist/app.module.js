@@ -15,6 +15,9 @@ const auth_module_1 = require("./auth/auth.module");
 const users_module_1 = require("./users/users.module");
 const organizations_module_1 = require("./organizations/organizations.module");
 const leads_module_1 = require("./leads/leads.module");
+const contacts_module_1 = require("./contacts/contacts.module");
+const dashboard_module_1 = require("./dashboard/dashboard.module");
+const proposals_module_1 = require("./proposals/proposals.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -31,6 +34,9 @@ exports.AppModule = AppModule = __decorate([
             users_module_1.UsersModule,
             organizations_module_1.OrganizationsModule,
             leads_module_1.LeadsModule,
+            contacts_module_1.ContactsModule,
+            dashboard_module_1.DashboardModule,
+            proposals_module_1.ProposalsModule,
         ],
     })
 ], AppModule);

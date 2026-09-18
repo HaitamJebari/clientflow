@@ -16,7 +16,7 @@ import { SessionGuard } from '../auth/guards/session.guard';
 import { JwtPayload } from '../auth/types/jwt-payload.type';
 
 import { ContactsService } from './contacts.service';
-import { QueryContactsDto } from '../leads/dto/query-contacts.dto';
+import { QueryContactsDto } from './dto/query-contacts.dto';
 
 type AuthenticatedRequest =
   Request & {

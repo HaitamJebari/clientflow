@@ -1,64 +1,39 @@
-import {
-  Module,
-} from '@nestjs/common';
+import { Module } from '@nestjs/common';
 
-import {
-  PassportModule,
-} from '@nestjs/passport';
+import { AuthModule } from '../auth/auth.module';
+import { PrismaModule } from '../prisma/prisma.module';
 
-import {
-  PrismaModule,
-} from '../prisma/prisma.module';
-
-import {
-  ContactsController,
-} from '../contacts/contacts.controller';
-
-import {
-  DashboardController,
-} from '../dashboard/dashboard.controller';
-
-import {
-  ContactsService,
-} from '../contacts/contacts.service';
-
-import {
-  DashboardService,
-} from '../dashboard/dashboard.service';
-
-import {
-  LeadsController,
-} from './leads.controller';
-
-import {
-  LeadsService,
-} from './leads.service';
+import { LeadsController } from './leads.controller';
+import { LeadsService } from './leads.service';
+import { PassportModule } from '@nestjs/passport';
 
 @Module({
   imports: [
+    AuthModule,
     PrismaModule,
 
+PassportModule.register({
+      defaultStrategy: 'jwt',
+      session: false,
+    }),
+
+
     PassportModule.register({
-      defaultStrategy:
-        'jwt',
+      defaultStrategy: 'jwt',
+      session: false,
     }),
   ],
 
   controllers: [
     LeadsController,
-    ContactsController,
-    DashboardController,
   ],
 
   providers: [
     LeadsService,
-    ContactsService,
-    DashboardService,
   ],
 
   exports: [
     LeadsService,
-    ContactsService,
   ],
 })
 export class LeadsModule {}

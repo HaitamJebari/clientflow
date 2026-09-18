@@ -6,16 +6,14 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 
 import { AccessTokenStrategy } from './strategies/access-token.strategy';
+
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-
 import { SessionGuard } from './guards/session.guard';
-
 import { OrganizationMembershipGuard } from './guards/organization-membership.guard';
 import { RolesGuard } from './guards/roles.guard';
 
 @Module({
   imports: [
-    PassportModule,
     PassportModule.register({
       defaultStrategy: 'jwt',
       session: false,
@@ -24,7 +22,9 @@ import { RolesGuard } from './guards/roles.guard';
     JwtModule.register({}),
   ],
 
-  controllers: [AuthController],
+  controllers: [
+    AuthController,
+  ],
 
   providers: [
     AuthService,
