@@ -56,6 +56,12 @@ interface SidebarProps {
   onToggleCollapsed: () => void;
 }
 
+interface FollowUpSidebarSummary {
+  pendingCount: number;
+  overdueCount: number;
+  dueNext24HoursCount: number;
+}
+
 
 /* =========================================================
    NAVIGATION
@@ -118,7 +124,6 @@ const navigation = [
         label: 'Follow-ups',
         href: '/follow-ups',
         icon: Inbox,
-        badge: 3,
       },
     ],
   },
@@ -175,6 +180,7 @@ export function Sidebar({
     user,
     organization,
     logout,
+    request,
   } = useAuth();
 
 
@@ -192,126 +198,91 @@ export function Sidebar({
     'CF';
 
 
-  /* =======================================================
-     SIDEBAR NAVIGATION SCROLLBAR
-  ======================================================= */
-
-  const navigationScrollRef =
-    useRef<HTMLElement | null>(
-      null,
-    );
-
   const [
-    navigationScrollbar,
-    setNavigationScrollbar,
-  ] = useState({
-    thumbHeight: 48,
-    thumbTop: 0,
-    canScroll: false,
-  });
+    followUpBadge,
+    setFollowUpBadge,
+  ] = useState(0);
 
-  function syncNavigationScrollbar() {
-    const element =
-      navigationScrollRef.current;
-
-    if (!element) {
-      return;
-    }
-
-    const {
-      clientHeight,
-      scrollHeight,
-      scrollTop,
-    } = element;
-
-    if (clientHeight <= 0) {
-      return;
-    }
-
-    const canScroll =
-      scrollHeight > clientHeight + 1;
-
-    /*
-     * Keep a visible desktop thumb even when the current
-     * viewport is tall enough that no scrolling is needed.
-     * When content overflows, the thumb becomes proportional
-     * and follows the real scroll position.
-     */
-    const thumbHeight =
-      canScroll
-        ? Math.max(
-            42,
-            (clientHeight /
-              scrollHeight) *
-              clientHeight,
-          )
-        : Math.min(
-            clientHeight,
-            64,
-          );
-
-    const maxThumbTop =
-      Math.max(
-        0,
-        clientHeight -
-          thumbHeight,
-      );
-
-    const maxScrollTop =
-      Math.max(
-        0,
-        scrollHeight -
-          clientHeight,
-      );
-
-    const thumbTop =
-      canScroll &&
-      maxScrollTop > 0
-        ? (scrollTop /
-            maxScrollTop) *
-          maxThumbTop
-        : 8;
-
-    setNavigationScrollbar({
-      thumbHeight,
-      thumbTop,
-      canScroll,
-    });
-  }
 
   useEffect(() => {
-    const element =
-      navigationScrollRef.current;
+    let cancelled =
+      false;
 
-    if (!element) {
-      return;
+    async function loadFollowUpBadge() {
+      try {
+        const summary =
+          await request<FollowUpSidebarSummary>(
+            '/follow-ups/summary/overview',
+          );
+
+        if (cancelled) {
+          return;
+        }
+
+        const actionableCount =
+          Math.max(
+            0,
+            Number(
+              summary.overdueCount ??
+              0,
+            ),
+          ) +
+          Math.max(
+            0,
+            Number(
+              summary.dueNext24HoursCount ??
+              0,
+            ),
+          );
+
+        setFollowUpBadge(
+          actionableCount,
+        );
+      } catch {
+        if (!cancelled) {
+          setFollowUpBadge(
+            0,
+          );
+        }
+      }
     }
 
-    syncNavigationScrollbar();
+    void loadFollowUpBadge();
 
-    const resizeObserver =
-      new ResizeObserver(() => {
-        syncNavigationScrollbar();
-      });
+    const interval =
+      window.setInterval(
+        () => {
+          void loadFollowUpBadge();
+        },
+        60_000,
+      );
 
-    resizeObserver.observe(
-      element,
-    );
+    function handleFocus() {
+      void loadFollowUpBadge();
+    }
 
     window.addEventListener(
-      'resize',
-      syncNavigationScrollbar,
+      'focus',
+      handleFocus,
     );
 
     return () => {
-      resizeObserver.disconnect();
+      cancelled =
+        true;
+
+      window.clearInterval(
+        interval,
+      );
 
       window.removeEventListener(
-        'resize',
-        syncNavigationScrollbar,
+        'focus',
+        handleFocus,
       );
     };
-  }, [collapsed]);
+  }, [
+    pathname,
+    request,
+  ]);
 
 
   /* =======================================================
@@ -904,40 +875,25 @@ export function Sidebar({
               NAVIGATION
           ================================================= */}
 
-          <div
-            className="
-              relative
+          <nav
+            className={`
+              cf-sidebar-scroll
+
               min-h-0
               flex-1
-            "
-          >
-            <nav
-              ref={navigationScrollRef}
-              onScroll={
-                syncNavigationScrollbar
+
+              overflow-y-auto
+              overflow-x-hidden
+
+              px-3
+              pb-4
+
+              ${collapsed
+                ? 'lg:px-2'
+                : ''
               }
-              className={`
-                cf-sidebar-scroll
-
-                h-full
-                min-h-0
-
-                overflow-y-auto
-                overflow-x-hidden
-
-                px-3
-                pb-4
-                pr-4
-
-                [scrollbar-width:none]
-                [&::-webkit-scrollbar]:hidden
-
-                ${collapsed
-                  ? 'lg:px-2 lg:pr-3'
-                  : ''
-                }
-              `}
-            >
+            `}
+          >
             {navigation.map(
               (
                 group,
@@ -1025,6 +981,12 @@ export function Sidebar({
                           pathname.startsWith(
                             `${item.href}/`,
                           );
+
+                        const badge =
+                          item.href ===
+                          '/follow-ups'
+                            ? followUpBadge
+                            : 0;
 
 
                         return (
@@ -1150,50 +1112,50 @@ export function Sidebar({
                               </span>
 
 
-                              {'badge' in
-                                item &&
-                                item.badge && (
-                                  <span
-                                    className={`
-                                      flex
-                                      min-w-5
-                                      shrink-0
-                                      items-center
-                                      justify-center
+                              {badge > 0 && (
+                                <span
+                                  className={`
+                                    flex
+                                    min-w-5
+                                    shrink-0
+                                    items-center
+                                    justify-center
 
-                                      rounded-full
+                                    rounded-full
 
-                                      bg-[var(--cf-primary)]
+                                    bg-[var(--cf-primary)]
 
-                                      px-1.5
-                                      py-[2px]
+                                    px-1.5
+                                    py-[2px]
 
-                                      text-[9px]
-                                      font-semibold
-                                      text-white
+                                    text-[9px]
+                                    font-semibold
+                                    text-white
 
-                                      ${collapsed
-                                        ? `
-                                            lg:absolute
-                                            lg:right-[3px]
-                                            lg:top-[3px]
+                                    ${collapsed
+                                      ? `
+                                          lg:absolute
+                                          lg:right-[3px]
+                                          lg:top-[3px]
 
-                                            lg:h-[14px]
-                                            lg:min-w-[14px]
+                                          lg:h-[14px]
+                                          lg:min-w-[14px]
 
-                                            lg:px-[3px]
+                                          lg:px-[3px]
 
-                                            lg:text-[7px]
-                                          `
-                                        : ''
-                                      }
-                                    `}
-                                  >
-                                    {
-                                      item.badge
+                                          lg:text-[7px]
+                                        `
+                                      : ''
                                     }
-                                  </span>
-                                )}
+                                  `}
+                                >
+                                  {
+                                    badge > 99
+                                      ? '99+'
+                                      : badge
+                                  }
+                                </span>
+                              )}
                             </Link>
                           </SidebarTooltip>
                         );
@@ -1203,57 +1165,7 @@ export function Sidebar({
                 </div>
               ),
             )}
-            </nav>
-
-            {/* Always-visible desktop scrollbar */}
-
-            <div
-              aria-hidden="true"
-              className="
-                pointer-events-none
-
-                absolute
-                bottom-3
-                right-[5px]
-                top-1
-
-                hidden
-                w-[6px]
-
-                rounded-full
-
-                bg-[var(--cf-sidebar-border)]/45
-
-                lg:block
-              "
-            >
-              <div
-                style={{
-                  height:
-                    navigationScrollbar.thumbHeight,
-                  transform: `translateY(${navigationScrollbar.thumbTop}px)`,
-                }}
-                className={`
-                  absolute
-                  left-0
-                  top-0
-
-                  w-[6px]
-
-                  rounded-full
-
-                  transition-[height,transform,background-color]
-                  duration-150
-
-                  ${
-                    navigationScrollbar.canScroll
-                      ? 'bg-[var(--cf-sidebar-muted)]'
-                      : 'bg-[var(--cf-sidebar-muted)]/65'
-                  }
-                `}
-              />
-            </div>
-          </div>
+          </nav>
 
 
           {/* =================================================
@@ -1536,33 +1448,26 @@ function SidebarFooterAction({
   const classes = `
     group
 
-    relative
-
     flex
-    min-h-[44px]
+    h-10
     w-full
     items-center
-    justify-start
 
     gap-3
 
-    rounded-xl
+    rounded-lg
 
-    px-3
+    px-2.5
 
-    text-left
-    text-[14px]
+    text-[13px]
     font-medium
 
     text-[var(--cf-sidebar-text)]/80
 
-    transition-all
-    duration-150
+    transition
 
     hover:bg-[var(--cf-sidebar-hover)]
     hover:text-[var(--cf-sidebar-text)]
-
-    active:scale-[0.985]
 
     ${collapsed
       ? `
@@ -1590,7 +1495,6 @@ function SidebarFooterAction({
           min-w-0
           flex-1
           truncate
-          text-left
 
           ${collapsed
             ? 'lg:hidden'
@@ -1633,13 +1537,7 @@ function SidebarFooterAction({
       <button
         type="button"
         aria-label={label}
-        onClick={
-          onMobileClose
-        }
         className={classes}
-        style={{
-          textAlign: 'left',
-        }}
       >
         {content}
       </button>

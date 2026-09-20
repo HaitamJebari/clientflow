@@ -51,16 +51,6 @@ export class PrismaService
       );
     }
 
-    /*
-     * Prisma ORM 7 + @prisma/adapter-pg uses node-postgres pooling.
-     *
-     * Production/serverless gets a deliberately smaller per-instance
-     * pool so horizontally scaled instances do not overwhelm Postgres.
-     * Local development keeps a slightly larger pool for parallel work.
-     *
-     * Override with DATABASE_POOL_MAX when your deployment requires
-     * a different value.
-     */
     const defaultPoolMax =
       process.env.NODE_ENV ===
       'production'
@@ -98,10 +88,6 @@ export class PrismaService
   }
 
   async onModuleInit(): Promise<void> {
-    /*
-     * Warm the database connection when Nest starts instead of making
-     * the first real user request pay the full connection setup cost.
-     */
     await this.$connect();
   }
 

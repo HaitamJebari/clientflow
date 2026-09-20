@@ -47,6 +47,20 @@ enum ProposalStatus {
   EXPIRED
 }
 
+enum FollowUpStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum FollowUpChannel {
+  EMAIL
+  CALL
+  WHATSAPP
+  LINKEDIN
+  OTHER
+}
+
 model User {
   id String @id @default(uuid())
 
@@ -82,6 +96,7 @@ model Organization {
   leads     Lead[]
   contacts  Contact[]
   proposals Proposal[]
+  followUps FollowUp[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -154,6 +169,7 @@ model Contact {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   leads        Lead[]
   proposals    Proposal[]
+  followUps    FollowUp[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -215,6 +231,7 @@ model Lead {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   contact      Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
   proposals    Proposal[]
+  followUps    FollowUp[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -279,4 +296,38 @@ model Proposal {
   @@index([organizationId, contactId])
   @@index([organizationId, createdAt])
   @@map("proposals")
+}
+
+model FollowUp {
+  id String @id @default(uuid())
+
+  organizationId String
+  leadId         String
+  contactId      String?
+
+  channel FollowUpChannel @default(EMAIL)
+  status  FollowUpStatus  @default(PENDING)
+
+  scheduledFor DateTime
+
+  subject      String?
+  draftMessage String?
+  reason       String?
+
+  completedAt DateTime?
+  cancelledAt DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead         Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  contact      Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([organizationId, status, scheduledFor])
+  @@index([organizationId, leadId])
+  @@index([organizationId, contactId])
+  @@index([organizationId, createdAt])
+  @@map("follow_ups")
 }
