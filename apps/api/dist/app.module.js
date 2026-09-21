@@ -19,6 +19,8 @@ const contacts_module_1 = require("./contacts/contacts.module");
 const dashboard_module_1 = require("./dashboard/dashboard.module");
 const proposals_module_1 = require("./proposals/proposals.module");
 const follow_ups_module_1 = require("./follow-ups/follow-ups.module");
+const insights_module_1 = require("./insights/insights.module");
+const ai_module_1 = require("./ai/ai.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -39,6 +41,8 @@ exports.AppModule = AppModule = __decorate([
             dashboard_module_1.DashboardModule,
             proposals_module_1.ProposalsModule,
             follow_ups_module_1.FollowUpsModule,
+            insights_module_1.InsightsModule,
+            ai_module_1.AiModule,
         ],
     })
 ], AppModule);
