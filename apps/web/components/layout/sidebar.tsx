@@ -1209,6 +1209,7 @@ export function Sidebar({
                 collapsed
               }
               label="Help & support"
+              href="/help"
               icon={
                 <CircleHelp
                   size={17}

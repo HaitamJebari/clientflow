@@ -21,6 +21,7 @@ const proposals_module_1 = require("./proposals/proposals.module");
 const follow_ups_module_1 = require("./follow-ups/follow-ups.module");
 const insights_module_1 = require("./insights/insights.module");
 const ai_module_1 = require("./ai/ai.module");
+const members_module_1 = require("./members/members.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -43,6 +44,7 @@ exports.AppModule = AppModule = __decorate([
             follow_ups_module_1.FollowUpsModule,
             insights_module_1.InsightsModule,
             ai_module_1.AiModule,
+            members_module_1.MembersModule,
         ],
     })
 ], AppModule);
