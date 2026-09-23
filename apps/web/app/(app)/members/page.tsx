@@ -2,11 +2,15 @@
 
 import {
   CheckCircle2,
+  Clock3,
   LoaderCircle,
+  MailPlus,
   Search,
   ShieldCheck,
+  Trash2,
   UserRound,
   UsersRound,
+  X,
 } from 'lucide-react';
 
 import {
@@ -19,6 +23,10 @@ import {
 import {
   useAuth,
 } from '@/components/providers/auth-provider';
+
+import {
+  clientFlowSwal,
+} from '@/lib/swal';
 
 type MemberRole =
   | 'OWNER'
@@ -40,16 +48,55 @@ interface MemberRecord {
 
     avatarUrl?: string | null;
     emailVerified: boolean;
-    createdAt: string;
+    createdAt?: string;
   };
 }
 
 interface MembersResponse {
+  viewerRole: MemberRole;
+
   data:
     MemberRecord[];
 
   meta: {
     total: number;
+  };
+}
+
+interface InvitationRecord {
+  id: string;
+  email: string;
+  role: MemberRole;
+  expiresAt: string;
+  createdAt: string;
+
+  invitedBy?: {
+    id: string;
+    email: string;
+    firstName?: string | null;
+    lastName?: string | null;
+  } | null;
+}
+
+interface InvitationsResponse {
+  data:
+    InvitationRecord[];
+
+  meta: {
+    total: number;
+  };
+}
+
+interface CreateInvitationResponse {
+  invitation:
+    InvitationRecord;
+
+  delivery: {
+    status:
+      'NOT_CONFIGURED';
+
+    message:
+      string;
   };
 }
 
@@ -122,6 +169,36 @@ function roleLabel(
   return 'Member';
 }
 
+function formatDate(
+  value:
+    string,
+) {
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return '—';
+  }
+
+  return new Intl.DateTimeFormat(
+    'en',
+    {
+      day:
+        'numeric',
+      month:
+        'short',
+      year:
+        'numeric',
+    },
+  ).format(
+    date,
+  );
+}
+
 export default function MembersPage() {
   const {
     request,
@@ -135,6 +212,22 @@ export default function MembersPage() {
     useState<
       MemberRecord[]
     >([]);
+
+  const [
+    invitations,
+    setInvitations,
+  ] =
+    useState<
+      InvitationRecord[]
+    >([]);
+
+  const [
+    viewerRole,
+    setViewerRole,
+  ] =
+    useState<
+      MemberRole
+    >('MEMBER');
 
   const [
     search,
@@ -156,6 +249,55 @@ export default function MembersPage() {
       string | null
     >(null);
 
+  const [
+    success,
+    setSuccess,
+  ] =
+    useState<
+      string | null
+    >(null);
+
+  const [
+    inviteOpen,
+    setInviteOpen,
+  ] =
+    useState(false);
+
+  const [
+    inviteEmail,
+    setInviteEmail,
+  ] =
+    useState('');
+
+  const [
+    inviteRole,
+    setInviteRole,
+  ] =
+    useState<
+      'ADMIN' |
+      'MEMBER'
+    >('MEMBER');
+
+  const [
+    creatingInvite,
+    setCreatingInvite,
+  ] =
+    useState(false);
+
+  const [
+    busyId,
+    setBusyId,
+  ] =
+    useState<
+      string | null
+    >(null);
+
+  const canManage =
+    viewerRole ===
+      'OWNER' ||
+    viewerRole ===
+      'ADMIN';
+
   const load =
     useCallback(
       async () => {
@@ -168,7 +310,7 @@ export default function MembersPage() {
         );
 
         try {
-          const response =
+          const membersResponse =
             await request<
               MembersResponse
             >(
@@ -176,9 +318,36 @@ export default function MembersPage() {
             );
 
           setMembers(
-            response.data ??
+            membersResponse.data ??
               [],
           );
+
+          setViewerRole(
+            membersResponse.viewerRole,
+          );
+
+          if (
+            membersResponse.viewerRole ===
+              'OWNER' ||
+            membersResponse.viewerRole ===
+              'ADMIN'
+          ) {
+            const invitationResponse =
+              await request<
+                InvitationsResponse
+              >(
+                '/members/invitations',
+              );
+
+            setInvitations(
+              invitationResponse.data ??
+                [],
+            );
+          } else {
+            setInvitations(
+              [],
+            );
+          }
         } catch (
           loadError
         ) {
@@ -242,6 +411,405 @@ export default function MembersPage() {
       ],
     );
 
+  async function createInvitation(
+    event:
+      React.FormEvent,
+  ) {
+    event.preventDefault();
+
+    const email =
+      inviteEmail
+        .trim()
+        .toLowerCase();
+
+    if (!email) {
+      setError(
+        'Enter the email address you want to invite.',
+      );
+      return;
+    }
+
+    setCreatingInvite(
+      true,
+    );
+
+    setError(
+      null,
+    );
+
+    setSuccess(
+      null,
+    );
+
+    try {
+      const response =
+        await request<
+          CreateInvitationResponse
+        >(
+          '/members/invitations',
+          {
+            method:
+              'POST',
+
+            body:
+              JSON.stringify({
+                email,
+
+                role:
+                  inviteRole,
+              }),
+          },
+        );
+
+      setInvitations(
+        (
+          current,
+        ) => [
+          response.invitation,
+          ...current,
+        ],
+      );
+
+      setInviteEmail(
+        '',
+      );
+
+      setInviteRole(
+        'MEMBER',
+      );
+
+      setInviteOpen(
+        false,
+      );
+
+      setSuccess(
+        response.delivery.message,
+      );
+    } catch (
+      inviteError
+    ) {
+      setError(
+        inviteError instanceof
+          Error
+          ? inviteError.message
+          : 'Unable to create invitation.',
+      );
+    } finally {
+      setCreatingInvite(
+        false,
+      );
+    }
+  }
+
+  async function revokeInvitation(
+    invitation:
+      InvitationRecord,
+  ) {
+    const result =
+      await clientFlowSwal.fire({
+        title:
+          'Cancel invitation?',
+
+        text:
+          `The pending invitation for ${invitation.email} will no longer be usable.`,
+
+        icon:
+          'warning',
+
+        showCancelButton:
+          true,
+
+        confirmButtonText:
+          'Yes, cancel invitation',
+
+        cancelButtonText:
+          'Keep invitation',
+
+        reverseButtons:
+          true,
+
+        focusCancel:
+          true,
+      });
+
+    if (
+      !result.isConfirmed
+    ) {
+      return;
+    }
+
+    setBusyId(
+      invitation.id,
+    );
+
+    setError(
+      null,
+    );
+
+    setSuccess(
+      null,
+    );
+
+    try {
+      await request(
+        `/members/invitations/${invitation.id}`,
+        {
+          method:
+            'DELETE',
+        },
+      );
+
+      setInvitations(
+        (
+          current,
+        ) =>
+          current.filter(
+            (
+              item,
+            ) =>
+              item.id !==
+              invitation.id,
+          ),
+      );
+
+      await clientFlowSwal.fire({
+        title:
+          'Invitation cancelled',
+
+        text:
+          `${invitation.email} can no longer use that invitation.`,
+
+        icon:
+          'success',
+
+        confirmButtonText:
+          'OK',
+      });
+    } catch (
+      revokeError
+    ) {
+      const message =
+        revokeError instanceof
+          Error
+          ? revokeError.message
+          : 'Unable to cancel invitation.';
+
+      setError(
+        message,
+      );
+
+      await clientFlowSwal.fire({
+        title:
+          'Could not cancel invitation',
+
+        text:
+          message,
+
+        icon:
+          'error',
+
+        confirmButtonText:
+          'OK',
+      });
+    } finally {
+      setBusyId(
+        null,
+      );
+    }
+  }
+
+  async function changeRole(
+    member:
+      MemberRecord,
+
+    role:
+      MemberRole,
+  ) {
+    if (
+      member.role ===
+      role
+    ) {
+      return;
+    }
+
+    setBusyId(
+      member.id,
+    );
+
+    setError(
+      null,
+    );
+
+    setSuccess(
+      null,
+    );
+
+    try {
+      await request(
+        `/members/${member.id}/role`,
+        {
+          method:
+            'PATCH',
+
+          body:
+            JSON.stringify({
+              role,
+            }),
+        },
+      );
+
+      setMembers(
+        (
+          current,
+        ) =>
+          current.map(
+            (
+              item,
+            ) =>
+              item.id ===
+              member.id
+                ? {
+                    ...item,
+                    role,
+                  }
+                : item,
+          ),
+      );
+
+      setSuccess(
+        `${displayName(member)} is now ${roleLabel(role)}.`,
+      );
+    } catch (
+      roleError
+    ) {
+      setError(
+        roleError instanceof
+          Error
+          ? roleError.message
+          : 'Unable to update member role.',
+      );
+    } finally {
+      setBusyId(
+        null,
+      );
+    }
+  }
+
+  async function removeMember(
+    member:
+      MemberRecord,
+  ) {
+    const result =
+      await clientFlowSwal.fire({
+        title:
+          'Remove member?',
+
+        text:
+          `${displayName(member)} will lose access to ${organization?.name ?? 'this workspace'} and their active workspace sessions will be revoked.`,
+
+        icon:
+          'warning',
+
+        showCancelButton:
+          true,
+
+        confirmButtonText:
+          'Yes, remove member',
+
+        cancelButtonText:
+          'Keep member',
+
+        reverseButtons:
+          true,
+
+        focusCancel:
+          true,
+      });
+
+    if (
+      !result.isConfirmed
+    ) {
+      return;
+    }
+
+    setBusyId(
+      member.id,
+    );
+
+    setError(
+      null,
+    );
+
+    setSuccess(
+      null,
+    );
+
+    try {
+      await request(
+        `/members/${member.id}`,
+        {
+          method:
+            'DELETE',
+        },
+      );
+
+      setMembers(
+        (
+          current,
+        ) =>
+          current.filter(
+            (
+              item,
+            ) =>
+              item.id !==
+              member.id,
+          ),
+      );
+
+      setSuccess(
+        `${displayName(member)} was removed from the workspace.`,
+      );
+    } catch (
+      removeError
+    ) {
+      setError(
+        removeError instanceof
+          Error
+          ? removeError.message
+          : 'Unable to remove member.',
+      );
+    } finally {
+      setBusyId(
+        null,
+      );
+    }
+  }
+
+  function canRemove(
+    member:
+      MemberRecord,
+  ) {
+    if (
+      member.isCurrentUser
+    ) {
+      return false;
+    }
+
+    if (
+      viewerRole ===
+      'OWNER'
+    ) {
+      return true;
+    }
+
+    return (
+      viewerRole ===
+        'ADMIN' &&
+      member.role ===
+        'MEMBER'
+    );
+  }
+
   return (
     <div
       className="
@@ -249,47 +817,99 @@ export default function MembersPage() {
         text-[var(--cf-text)]
       "
     >
-      <div>
-        <p
-          className="
-            text-[12px]
-            font-semibold
-            uppercase
-            tracking-[0.14em]
-            text-[var(--cf-text-secondary)]
-          "
-        >
-          Workspace
-        </p>
+      <div
+        className="
+          flex
+          flex-col
+          gap-5
 
-        <h1
-          className="
-            mt-2
-            text-[32px]
-            font-semibold
-            tracking-[-1px]
+          sm:flex-row
+          sm:items-end
+          sm:justify-between
+        "
+      >
+        <div>
+          <p
+            className="
+              text-[12px]
+              font-semibold
+              uppercase
+              tracking-[0.14em]
+              text-[var(--cf-text-secondary)]
+            "
+          >
+            Workspace
+          </p>
 
-            sm:text-[38px]
-          "
-        >
-          Members
-        </h1>
+          <h1
+            className="
+              mt-2
+              text-[32px]
+              font-semibold
+              tracking-[-1px]
 
-        <p
-          className="
-            mt-2
-            max-w-[720px]
-            text-[15px]
-            leading-6
-            text-[var(--cf-text-secondary)]
+              sm:text-[38px]
+            "
+          >
+            Members
+          </h1>
 
-            sm:text-[16px]
-          "
-        >
-          People who can access {organization?.name ?? 'this workspace'}.
-          Role editing and email invitations are intentionally left for
-          the invitation workflow phase.
-        </p>
+          <p
+            className="
+              mt-2
+              max-w-[760px]
+              text-[15px]
+              leading-6
+              text-[var(--cf-text-secondary)]
+
+              sm:text-[16px]
+            "
+          >
+            Manage access to {organization?.name ?? 'this workspace'},
+            member roles and pending invitations.
+          </p>
+        </div>
+
+        {canManage && (
+          <button
+            type="button"
+            onClick={() => {
+              setError(
+                null,
+              );
+
+              setSuccess(
+                null,
+              );
+
+              setInviteOpen(
+                true,
+              );
+            }}
+            className="
+              inline-flex
+              h-11
+              items-center
+              justify-center
+              gap-2
+              self-start
+              rounded-xl
+              bg-[var(--cf-primary)]
+              px-4
+              text-[13px]
+              font-semibold
+              text-white
+              transition
+              hover:bg-[var(--cf-primary-hover)]
+            "
+          >
+            <MailPlus
+              size={15}
+            />
+
+            Invite member
+          </button>
+        )}
       </div>
 
       <div
@@ -298,11 +918,11 @@ export default function MembersPage() {
           grid
           gap-3
 
-          sm:grid-cols-3
+          sm:grid-cols-4
         "
       >
         <Stat
-          label="Total members"
+          label="Members"
           value={
             members.length
           }
@@ -334,6 +954,18 @@ export default function MembersPage() {
         />
 
         <Stat
+          label="Pending invites"
+          value={
+            invitations.length
+          }
+          icon={
+            <Clock3
+              size={16}
+            />
+          }
+        />
+
+        <Stat
           label="Verified emails"
           value={
             members.filter(
@@ -352,6 +984,25 @@ export default function MembersPage() {
         />
       </div>
 
+      {success && (
+        <div
+          className="
+            mt-5
+            rounded-xl
+            border
+            border-emerald-500/20
+            bg-emerald-500/5
+            px-4
+            py-3
+            text-[13px]
+            leading-5
+            text-emerald-700
+          "
+        >
+          {success}
+        </div>
+      )}
+
       {error && (
         <div
           className="
@@ -363,6 +1014,7 @@ export default function MembersPage() {
             px-4
             py-3
             text-[13px]
+            leading-5
             text-red-600
           "
         >
@@ -414,7 +1066,7 @@ export default function MembersPage() {
                 text-[var(--cf-text-muted)]
               "
             >
-              {members.length} active membership{members.length === 1 ? '' : 's'}
+              Your role: {roleLabel(viewerRole)}
             </p>
           </div>
 
@@ -466,35 +1118,19 @@ export default function MembersPage() {
         </div>
 
         {loading ? (
-          <div
-            className="
-              flex
-              min-h-[280px]
-              items-center
-              justify-center
-              gap-2
-              text-[13px]
-              text-[var(--cf-text-secondary)]
-            "
-          >
-            <LoaderCircle
-              size={16}
-              className="
-                animate-spin
-              "
-            />
-
-            Loading members
-          </div>
+          <LoadingState
+            label="Loading members"
+          />
         ) : filtered.length ===
           0 ? (
           <div
             className="
               flex
-              min-h-[280px]
+              min-h-[260px]
               flex-col
               items-center
               justify-center
+              px-6
               text-center
             "
           >
@@ -533,7 +1169,7 @@ export default function MembersPage() {
                   className="
                     flex
                     flex-col
-                    gap-3
+                    gap-4
                     px-4
                     py-4
 
@@ -629,25 +1265,73 @@ export default function MembersPage() {
                   <div
                     className="
                       flex
+                      flex-wrap
                       items-center
                       gap-2
                     "
                   >
-                    <span
-                      className="
-                        rounded-full
-                        bg-[var(--cf-primary-soft)]
-                        px-3
-                        py-1.5
-                        text-[10px]
-                        font-semibold
-                        text-[var(--cf-primary)]
-                      "
-                    >
-                      {roleLabel(
-                        member.role,
-                      )}
-                    </span>
+                    {viewerRole ===
+                      'OWNER' &&
+                    !member.isCurrentUser ? (
+                      <select
+                        value={
+                          member.role
+                        }
+                        disabled={
+                          busyId ===
+                          member.id
+                        }
+                        onChange={(
+                          event,
+                        ) =>
+                          void changeRole(
+                            member,
+                            event.target
+                              .value as
+                              MemberRole,
+                          )
+                        }
+                        className="
+                          h-9
+                          rounded-lg
+                          border
+                          border-[var(--cf-border)]
+                          bg-[var(--cf-surface-soft)]
+                          px-3
+                          text-[11px]
+                          font-semibold
+                          outline-none
+                        "
+                      >
+                        <option value="OWNER">
+                          Owner
+                        </option>
+
+                        <option value="ADMIN">
+                          Admin
+                        </option>
+
+                        <option value="MEMBER">
+                          Member
+                        </option>
+                      </select>
+                    ) : (
+                      <span
+                        className="
+                          rounded-full
+                          bg-[var(--cf-primary-soft)]
+                          px-3
+                          py-1.5
+                          text-[10px]
+                          font-semibold
+                          text-[var(--cf-primary)]
+                        "
+                      >
+                        {roleLabel(
+                          member.role,
+                        )}
+                      </span>
+                    )}
 
                     <span
                       className="
@@ -659,6 +1343,51 @@ export default function MembersPage() {
                         ? 'Verified'
                         : 'Unverified'}
                     </span>
+
+                    {canRemove(
+                      member,
+                    ) && (
+                      <button
+                        type="button"
+                        disabled={
+                          busyId ===
+                          member.id
+                        }
+                        onClick={() =>
+                          void removeMember(
+                            member,
+                          )
+                        }
+                        aria-label={`Remove ${displayName(member)}`}
+                        className="
+                          flex
+                          h-9
+                          w-9
+                          items-center
+                          justify-center
+                          rounded-lg
+                          text-[var(--cf-text-muted)]
+                          transition
+                          hover:bg-red-500/10
+                          hover:text-red-600
+                          disabled:opacity-50
+                        "
+                      >
+                        {busyId ===
+                        member.id ? (
+                          <LoaderCircle
+                            size={14}
+                            className="
+                              animate-spin
+                            "
+                          />
+                        ) : (
+                          <Trash2
+                            size={14}
+                          />
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
               ),
@@ -666,6 +1395,538 @@ export default function MembersPage() {
           </div>
         )}
       </section>
+
+      {canManage && (
+        <section
+          className="
+            mt-6
+            overflow-hidden
+            rounded-[16px]
+            border
+            border-[var(--cf-border)]
+            bg-[var(--cf-surface)]
+            shadow-[var(--cf-shadow)]
+          "
+        >
+          <div
+            className="
+              border-b
+              border-[var(--cf-border-soft)]
+              px-4
+              py-4
+
+              sm:px-5
+            "
+          >
+            <h2
+              className="
+                text-[16px]
+                font-semibold
+              "
+            >
+              Pending invitations
+            </h2>
+
+            <p
+              className="
+                mt-1
+                text-[12px]
+                leading-5
+                text-[var(--cf-text-muted)]
+              "
+            >
+              Invitations expire after 7 days. Email delivery and
+              acceptance are connected in the next collaboration step.
+            </p>
+          </div>
+
+          {loading ? (
+            <LoadingState
+              label="Loading invitations"
+            />
+          ) : invitations.length ===
+            0 ? (
+            <div
+              className="
+                px-5
+                py-10
+                text-center
+              "
+            >
+              <MailPlus
+                size={20}
+                className="
+                  mx-auto
+                  text-[var(--cf-text-muted)]
+                "
+              />
+
+              <p
+                className="
+                  mt-3
+                  text-[13px]
+                  font-semibold
+                "
+              >
+                No pending invitations
+              </p>
+            </div>
+          ) : (
+            <div
+              className="
+                divide-y
+                divide-[var(--cf-border-soft)]
+              "
+            >
+              {invitations.map(
+                (
+                  invitation,
+                ) => (
+                  <div
+                    key={
+                      invitation.id
+                    }
+                    className="
+                      flex
+                      flex-col
+                      gap-3
+                      px-4
+                      py-4
+
+                      sm:flex-row
+                      sm:items-center
+                      sm:justify-between
+                      sm:px-5
+                    "
+                  >
+                    <div
+                      className="
+                        min-w-0
+                      "
+                    >
+                      <p
+                        className="
+                          truncate
+                          text-[14px]
+                          font-semibold
+                        "
+                      >
+                        {invitation.email}
+                      </p>
+
+                      <p
+                        className="
+                          mt-1
+                          text-[11px]
+                          text-[var(--cf-text-muted)]
+                        "
+                      >
+                        Expires {formatDate(
+                          invitation.expiresAt,
+                        )}
+                      </p>
+                    </div>
+
+                    <div
+                      className="
+                        flex
+                        items-center
+                        gap-2
+                      "
+                    >
+                      <span
+                        className="
+                          rounded-full
+                          bg-[var(--cf-primary-soft)]
+                          px-3
+                          py-1.5
+                          text-[10px]
+                          font-semibold
+                          text-[var(--cf-primary)]
+                        "
+                      >
+                        {roleLabel(
+                          invitation.role,
+                        )}
+                      </span>
+
+                      <span
+                        className="
+                          rounded-full
+                          border
+                          border-amber-500/20
+                          bg-amber-500/10
+                          px-3
+                          py-1.5
+                          text-[10px]
+                          font-semibold
+                          text-amber-700
+                        "
+                      >
+                        Pending
+                      </span>
+
+                      <button
+                        type="button"
+                        disabled={
+                          busyId ===
+                          invitation.id
+                        }
+                        onClick={() =>
+                          void revokeInvitation(
+                            invitation,
+                          )
+                        }
+                        className="
+                          flex
+                          h-9
+                          w-9
+                          items-center
+                          justify-center
+                          rounded-lg
+                          text-[var(--cf-text-muted)]
+                          transition
+                          hover:bg-red-500/10
+                          hover:text-red-600
+                          disabled:opacity-50
+                        "
+                        aria-label={`Cancel invitation for ${invitation.email}`}
+                      >
+                        {busyId ===
+                        invitation.id ? (
+                          <LoaderCircle
+                            size={14}
+                            className="
+                              animate-spin
+                            "
+                          />
+                        ) : (
+                          <X
+                            size={15}
+                          />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ),
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
+      {inviteOpen && (
+        <div
+          className="
+            fixed
+            inset-0
+            z-[220]
+            flex
+            items-center
+            justify-center
+            bg-black/45
+            p-4
+            backdrop-blur-[2px]
+          "
+          onMouseDown={(
+            event,
+          ) => {
+            if (
+              event.target ===
+              event.currentTarget
+            ) {
+              setInviteOpen(
+                false,
+              );
+            }
+          }}
+        >
+          <div
+            className="
+              w-full
+              max-w-[520px]
+              rounded-[18px]
+              border
+              border-[var(--cf-border)]
+              bg-[var(--cf-surface)]
+              p-5
+              shadow-[0_24px_80px_rgba(0,0,0,.28)]
+
+              sm:p-6
+            "
+          >
+            <div
+              className="
+                flex
+                items-start
+                justify-between
+                gap-4
+              "
+            >
+              <div>
+                <h2
+                  className="
+                    text-[20px]
+                    font-semibold
+                  "
+                >
+                  Invite a workspace member
+                </h2>
+
+                <p
+                  className="
+                    mt-2
+                    text-[13px]
+                    leading-6
+                    text-[var(--cf-text-secondary)]
+                  "
+                >
+                  Create a secure pending invitation. Email delivery
+                  and acceptance will be connected in the next step.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setInviteOpen(
+                    false,
+                  )
+                }
+                className="
+                  flex
+                  h-9
+                  w-9
+                  shrink-0
+                  items-center
+                  justify-center
+                  rounded-lg
+                  text-[var(--cf-text-muted)]
+                  hover:bg-[var(--cf-surface-soft)]
+                "
+                aria-label="Close invitation form"
+              >
+                <X
+                  size={17}
+                />
+              </button>
+            </div>
+
+            <form
+              onSubmit={
+                createInvitation
+              }
+              className="
+                mt-6
+              "
+            >
+              <label
+                className="
+                  block
+                "
+              >
+                <span
+                  className="
+                    mb-2
+                    block
+                    text-[12px]
+                    font-semibold
+                    text-[var(--cf-text-secondary)]
+                  "
+                >
+                  Work email
+                </span>
+
+                <input
+                  type="email"
+                  required
+                  value={
+                    inviteEmail
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setInviteEmail(
+                      event.target
+                        .value,
+                    )
+                  }
+                  placeholder="teammate@example.com"
+                  className="
+                    h-11
+                    w-full
+                    rounded-xl
+                    border
+                    border-[var(--cf-border)]
+                    bg-[var(--cf-surface-soft)]
+                    px-3
+                    text-[14px]
+                    outline-none
+                    focus:border-[var(--cf-primary)]
+                  "
+                />
+              </label>
+
+              <label
+                className="
+                  mt-4
+                  block
+                "
+              >
+                <span
+                  className="
+                    mb-2
+                    block
+                    text-[12px]
+                    font-semibold
+                    text-[var(--cf-text-secondary)]
+                  "
+                >
+                  Role
+                </span>
+
+                <select
+                  value={
+                    inviteRole
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setInviteRole(
+                      event.target
+                        .value as
+                        'ADMIN' |
+                        'MEMBER',
+                    )
+                  }
+                  className="
+                    h-11
+                    w-full
+                    rounded-xl
+                    border
+                    border-[var(--cf-border)]
+                    bg-[var(--cf-surface-soft)]
+                    px-3
+                    text-[14px]
+                    outline-none
+                    focus:border-[var(--cf-primary)]
+                  "
+                >
+                  <option value="MEMBER">
+                    Member
+                  </option>
+
+                  {viewerRole ===
+                    'OWNER' && (
+                    <option value="ADMIN">
+                      Admin
+                    </option>
+                  )}
+                </select>
+              </label>
+
+              <div
+                className="
+                  mt-6
+                  flex
+                  flex-col-reverse
+                  gap-2
+
+                  sm:flex-row
+                  sm:justify-end
+                "
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setInviteOpen(
+                      false,
+                    )
+                  }
+                  className="
+                    h-11
+                    rounded-xl
+                    border
+                    border-[var(--cf-border)]
+                    px-4
+                    text-[13px]
+                    font-semibold
+                    text-[var(--cf-text-secondary)]
+                  "
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={
+                    creatingInvite
+                  }
+                  className="
+                    inline-flex
+                    h-11
+                    items-center
+                    justify-center
+                    gap-2
+                    rounded-xl
+                    bg-[var(--cf-primary)]
+                    px-5
+                    text-[13px]
+                    font-semibold
+                    text-white
+                    disabled:opacity-60
+                  "
+                >
+                  {creatingInvite ? (
+                    <LoaderCircle
+                      size={15}
+                      className="
+                        animate-spin
+                      "
+                    />
+                  ) : (
+                    <MailPlus
+                      size={15}
+                    />
+                  )}
+
+                  Create invitation
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LoadingState({
+  label,
+}: {
+  label:
+    string;
+}) {
+  return (
+    <div
+      className="
+        flex
+        min-h-[220px]
+        items-center
+        justify-center
+        gap-2
+        text-[13px]
+        text-[var(--cf-text-secondary)]
+      "
+    >
+      <LoaderCircle
+        size={16}
+        className="
+          animate-spin
+        "
+      />
+
+      {label}
     </div>
   );
 }

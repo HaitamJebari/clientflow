@@ -73,8 +73,9 @@ model User {
 
   emailVerified Boolean @default(false)
 
-  memberships OrganizationMember[]
-  sessions    Session[]
+  memberships     OrganizationMember[]
+  sessions        Session[]
+  sentInvitations OrganizationInvitation[] @relation("InvitationSender")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -91,12 +92,13 @@ model Organization {
   website  String?
   industry String?
 
-  members   OrganizationMember[]
-  sessions  Session[]
-  leads     Lead[]
-  contacts  Contact[]
-  proposals Proposal[]
-  followUps FollowUp[]
+  members     OrganizationMember[]
+  sessions    Session[]
+  leads       Lead[]
+  contacts    Contact[]
+  proposals   Proposal[]
+  followUps   FollowUp[]
+  invitations OrganizationInvitation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -121,6 +123,34 @@ model OrganizationMember {
   @@index([organizationId])
   @@index([userId])
   @@map("organization_members")
+}
+
+model OrganizationInvitation {
+  id String @id @default(uuid())
+
+  organizationId  String
+  invitedByUserId String?
+
+  email String
+  role  OrganizationRole @default(MEMBER)
+
+  tokenHash String @unique
+
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  revokedAt  DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy    User?        @relation("InvitationSender", fields: [invitedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([organizationId, email])
+  @@index([expiresAt])
+  @@index([createdAt])
+  @@map("organization_invitations")
 }
 
 model Session {

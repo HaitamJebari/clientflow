@@ -1,6 +1,11 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
+  Param,
+  Patch,
+  Post,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -20,6 +25,14 @@ import {
 import type {
   JwtPayload,
 } from '../auth/types/jwt-payload.type';
+
+import {
+  CreateMemberInvitationDto,
+} from './dto/create-member-invitation.dto';
+
+import {
+  UpdateMemberRoleDto,
+} from './dto/update-member-role.dto';
 
 import {
   MembersService,
@@ -50,6 +63,91 @@ export class MembersController {
     return this.membersService.findAll(
       request.user.organizationId,
       request.user.sub,
+    );
+  }
+
+  @Get('invitations')
+  findInvitations(
+    @Req()
+    request:
+      AuthenticatedRequest,
+  ) {
+    return this.membersService.findInvitations(
+      request.user.organizationId,
+      request.user.sub,
+    );
+  }
+
+  @Post('invitations')
+  createInvitation(
+    @Req()
+    request:
+      AuthenticatedRequest,
+
+    @Body()
+    dto:
+      CreateMemberInvitationDto,
+  ) {
+    return this.membersService.createInvitation(
+      request.user.organizationId,
+      request.user.sub,
+      dto,
+    );
+  }
+
+  @Delete('invitations/:invitationId')
+  revokeInvitation(
+    @Req()
+    request:
+      AuthenticatedRequest,
+
+    @Param('invitationId')
+    invitationId:
+      string,
+  ) {
+    return this.membersService.revokeInvitation(
+      request.user.organizationId,
+      request.user.sub,
+      invitationId,
+    );
+  }
+
+  @Patch(':memberId/role')
+  updateRole(
+    @Req()
+    request:
+      AuthenticatedRequest,
+
+    @Param('memberId')
+    memberId:
+      string,
+
+    @Body()
+    dto:
+      UpdateMemberRoleDto,
+  ) {
+    return this.membersService.updateRole(
+      request.user.organizationId,
+      request.user.sub,
+      memberId,
+      dto,
+    );
+  }
+
+  @Delete(':memberId')
+  removeMember(
+    @Req()
+    request:
+      AuthenticatedRequest,
+
+    @Param('memberId')
+    memberId:
+      string,
+  ) {
+    return this.membersService.removeMember(
+      request.user.organizationId,
+      request.user.sub,
+      memberId,
     );
   }
 }
