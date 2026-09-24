@@ -16,6 +16,10 @@ import {
 } from '../generated/prisma/enums';
 
 import {
+  EmailService,
+} from '../email/email.service';
+
+import {
   PrismaService,
 } from '../prisma/prisma.service';
 
@@ -61,6 +65,9 @@ export class MembersService {
   constructor(
     private readonly prisma:
       PrismaService,
+
+    private readonly emailService:
+      EmailService,
   ) {}
 
   async findAll(
@@ -325,6 +332,51 @@ export class MembersService {
         invitationLifetimeMs,
       );
 
+    const [
+      organization,
+      inviter,
+    ] =
+      await Promise.all([
+        this.prisma.organization.findUnique({
+          where: {
+            id:
+              organizationId,
+          },
+
+          select: {
+            name:
+              true,
+          },
+        }),
+
+        this.prisma.user.findUnique({
+          where: {
+            id:
+              currentUserId,
+          },
+
+          select: {
+            email:
+              true,
+
+            firstName:
+              true,
+
+            lastName:
+              true,
+          },
+        }),
+      ]);
+
+    if (
+      !organization ||
+      !inviter
+    ) {
+      throw new NotFoundException(
+        'Workspace or inviter could not be found.',
+      );
+    }
+
     const invitation =
       await this.prisma.organizationInvitation.create({
         data: {
@@ -350,17 +402,74 @@ export class MembersService {
         },
       });
 
-    return {
-      invitation,
+    const inviterName =
+      [
+        inviter.firstName,
+        inviter.lastName,
+      ]
+        .filter(
+          Boolean,
+        )
+        .join(
+          ' ',
+        )
+        .trim() ||
+      inviter.email;
 
-      delivery: {
-        status:
-          'NOT_CONFIGURED',
+    try {
+      const emailResult =
+        await this.emailService.sendWorkspaceInvitation({
+          invitationId:
+            invitation.id,
 
-        message:
-          'The invitation is saved securely. Email delivery and invitation acceptance are connected in the next step.',
-      },
-    };
+          to:
+            invitation.email,
+
+          organizationName:
+            organization.name,
+
+          inviterName,
+
+          role:
+            invitation.role,
+
+          token:
+            rawToken,
+
+          expiresAt:
+            invitation.expiresAt,
+        });
+
+      return {
+        invitation,
+
+        emailSent:
+          true,
+
+        emailMessageId:
+          emailResult.id,
+      };
+    } catch (
+      error
+    ) {
+      /*
+       * Never leave a visibly-active invitation behind when
+       * the transactional email request did not complete.
+       */
+      await this.prisma.organizationInvitation.update({
+        where: {
+          id:
+            invitation.id,
+        },
+
+        data: {
+          revokedAt:
+            new Date(),
+        },
+      });
+
+      throw error;
+    }
   }
 
   async revokeInvitation(

@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Req,
   Res,
@@ -11,56 +12,95 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { ConfigService } from '@nestjs/config';
+import {
+  ConfigService,
+} from '@nestjs/config';
 
 import type {
   Request,
   Response,
 } from 'express';
 
-import { AuthService } from './auth.service';
+import {
+  AuthService,
+} from './auth.service';
 
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
+import {
+  AcceptInvitationLoginDto,
+} from './dto/accept-invitation-login.dto';
 
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import {
+  AcceptInvitationRegisterDto,
+} from './dto/accept-invitation-register.dto';
 
-import { CurrentUser } from './decorators/current-user.decorator';
+import {
+  LoginDto,
+} from './dto/login.dto';
 
-import * as jwtPayloadType from './types/jwt-payload.type';
+import {
+  RegisterDto,
+} from './dto/register.dto';
+
+import {
+  CurrentUser,
+} from './decorators/current-user.decorator';
+
+import {
+  JwtAuthGuard,
+} from './guards/jwt-auth.guard';
+
+import {
+  SessionGuard,
+} from './guards/session.guard';
+
+import type {
+  JwtPayload,
+} from './types/jwt-payload.type';
 
 @Controller('auth')
 export class AuthController {
-  private readonly refreshTokenExpiresIn: number;
+  private readonly refreshTokenExpiresIn:
+    number;
 
   constructor(
-    private readonly authService: AuthService,
+    private readonly authService:
+      AuthService,
 
-    private readonly configService: ConfigService,
+    private readonly configService:
+      ConfigService,
   ) {
-    this.refreshTokenExpiresIn = Number(
-      this.configService.get(
-        'JWT_REFRESH_EXPIRES_SECONDS',
-        '604800',
-      ),
-    );
+    this.refreshTokenExpiresIn =
+      Number(
+        this.configService.get(
+          'JWT_REFRESH_EXPIRES_SECONDS',
+          '604800',
+        ),
+      );
   }
 
   @Post('register')
   async register(
-    @Body() dto: RegisterDto,
+    @Body()
+    dto:
+      RegisterDto,
 
-    @Req() request: Request,
+    @Req()
+    request:
+      Request,
 
     @Res({
-      passthrough: true,
+      passthrough:
+        true,
     })
-    response: Response,
+    response:
+      Response,
   ) {
     const result =
       await this.authService.register(
         dto,
-        request.get('user-agent'),
+        request.get(
+          'user-agent',
+        ),
       );
 
     this.setRefreshTokenCookie(
@@ -69,30 +109,43 @@ export class AuthController {
     );
 
     return {
-      user: result.user,
+      user:
+        result.user,
+
       organization:
         result.organization,
+
       accessToken:
         result.accessToken,
     };
   }
 
   @Post('login')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(
+    HttpStatus.OK,
+  )
   async login(
-    @Body() dto: LoginDto,
+    @Body()
+    dto:
+      LoginDto,
 
-    @Req() request: Request,
+    @Req()
+    request:
+      Request,
 
     @Res({
-      passthrough: true,
+      passthrough:
+        true,
     })
-    response: Response,
+    response:
+      Response,
   ) {
     const result =
       await this.authService.login(
         dto,
-        request.get('user-agent'),
+        request.get(
+          'user-agent',
+        ),
       );
 
     this.setRefreshTokenCookie(
@@ -101,32 +154,42 @@ export class AuthController {
     );
 
     return {
-      user: result.user,
+      user:
+        result.user,
+
       organization:
         result.organization,
+
       accessToken:
         result.accessToken,
     };
   }
 
   @Post('refresh')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(
+    HttpStatus.OK,
+  )
   async refresh(
-    @Req() request: Request,
+    @Req()
+    request:
+      Request,
 
     @Res({
-      passthrough: true,
+      passthrough:
+        true,
     })
-    response: Response,
+    response:
+      Response,
   ) {
-    // console.log('RAW COOKIE HEADER:', request.headers.cookie);
-    // console.log('PARSED COOKIES:', request.cookies);
     const refreshToken =
-      request.cookies?.refresh_token as
+      request.cookies
+        ?.refresh_token as
         | string
         | undefined;
 
-    if (!refreshToken) {
+    if (
+      !refreshToken
+    ) {
       throw new UnauthorizedException(
         'Refresh token is missing.',
       );
@@ -149,16 +212,24 @@ export class AuthController {
   }
 
   @Post('logout')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(JwtAuthGuard)
+  @HttpCode(
+    HttpStatus.NO_CONTENT,
+  )
+  @UseGuards(
+    JwtAuthGuard,
+    SessionGuard,
+  )
   async logout(
     @CurrentUser()
-    currentUser: jwtPayloadType.JwtPayload,
+    currentUser:
+      JwtPayload,
 
     @Res({
-      passthrough: true,
+      passthrough:
+        true,
     })
-    response: Response,
+    response:
+      Response,
   ): Promise<void> {
     await this.authService.logout(
       currentUser.sessionId,
@@ -170,10 +241,14 @@ export class AuthController {
   }
 
   @Get('me')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(
+    JwtAuthGuard,
+    SessionGuard,
+  )
   async getMe(
     @CurrentUser()
-    currentUser: jwtPayloadType.JwtPayload,
+    currentUser:
+      JwtPayload,
   ) {
     return this.authService.getMe(
       currentUser.sub,
@@ -181,53 +256,301 @@ export class AuthController {
     );
   }
 
-private setRefreshTokenCookie(
-  response: Response,
-  refreshToken: string,
-): void {
-  const isProduction =
-    process.env.NODE_ENV === 'production';
+  @Get('invitations/:token')
+  getInvitationPreview(
+    @Param('token')
+    token:
+      string,
+  ) {
+    return this.authService.getInvitationPreview(
+      token,
+    );
+  }
 
-  response.cookie(
-    'refresh_token',
-    refreshToken,
-    {
-      httpOnly: true,
+  @Post('invitations/:token/register')
+  async registerWithInvitation(
+    @Param('token')
+    token:
+      string,
 
-      secure: isProduction,
+    @Body()
+    dto:
+      AcceptInvitationRegisterDto,
 
-      sameSite: isProduction
-        ? 'none'
-        : 'lax',
+    @Req()
+    request:
+      Request,
 
-      path: '/api/v1/auth',
+    @Res({
+      passthrough:
+        true,
+    })
+    response:
+      Response,
+  ) {
+    const result =
+      await this.authService.registerWithInvitation(
+        token,
+        dto,
+        request.get(
+          'user-agent',
+        ),
+      );
 
-      maxAge:
-        this.refreshTokenExpiresIn *
-        1000,
-    },
-  );
-}
+    this.setRefreshTokenCookie(
+      response,
+      result.refreshToken,
+    );
 
-private clearRefreshTokenCookie(
-  response: Response,
-): void {
-  const isProduction =
-    process.env.NODE_ENV === 'production';
+    return {
+      user:
+        result.user,
 
-  response.clearCookie(
-    'refresh_token',
-    {
-      httpOnly: true,
+      organization:
+        result.organization,
 
-      secure: isProduction,
+      accessToken:
+        result.accessToken,
+    };
+  }
 
-      sameSite: isProduction
-        ? 'none'
-        : 'lax',
+  @Post('invitations/:token/login')
+  @HttpCode(
+    HttpStatus.OK,
+  )
+  async loginWithInvitation(
+    @Param('token')
+    token:
+      string,
 
-      path: '/api/v1/auth',
-    },
-  );
-}
+    @Body()
+    dto:
+      AcceptInvitationLoginDto,
+
+    @Req()
+    request:
+      Request,
+
+    @Res({
+      passthrough:
+        true,
+    })
+    response:
+      Response,
+  ) {
+    const result =
+      await this.authService.loginWithInvitation(
+        token,
+        dto,
+        request.get(
+          'user-agent',
+        ),
+      );
+
+    this.setRefreshTokenCookie(
+      response,
+      result.refreshToken,
+    );
+
+    return {
+      user:
+        result.user,
+
+      organization:
+        result.organization,
+
+      accessToken:
+        result.accessToken,
+    };
+  }
+
+  @Post('invitations/:token/accept')
+  @HttpCode(
+    HttpStatus.OK,
+  )
+  @UseGuards(
+    JwtAuthGuard,
+    SessionGuard,
+  )
+  async acceptInvitation(
+    @Param('token')
+    token:
+      string,
+
+    @CurrentUser()
+    currentUser:
+      JwtPayload,
+
+    @Req()
+    request:
+      Request,
+
+    @Res({
+      passthrough:
+        true,
+    })
+    response:
+      Response,
+  ) {
+    const result =
+      await this.authService.acceptInvitation(
+        token,
+        currentUser.sub,
+        currentUser.sessionId,
+        request.get(
+          'user-agent',
+        ),
+      );
+
+    this.setRefreshTokenCookie(
+      response,
+      result.refreshToken,
+    );
+
+    return {
+      user:
+        result.user,
+
+      organization:
+        result.organization,
+
+      accessToken:
+        result.accessToken,
+    };
+  }
+
+  @Get('workspaces')
+  @UseGuards(
+    JwtAuthGuard,
+    SessionGuard,
+  )
+  listWorkspaces(
+    @CurrentUser()
+    currentUser:
+      JwtPayload,
+  ) {
+    return this.authService.listWorkspaces(
+      currentUser.sub,
+      currentUser.organizationId,
+    );
+  }
+
+  @Post('workspaces/:organizationId/switch')
+  @HttpCode(
+    HttpStatus.OK,
+  )
+  @UseGuards(
+    JwtAuthGuard,
+    SessionGuard,
+  )
+  async switchWorkspace(
+    @Param('organizationId')
+    organizationId:
+      string,
+
+    @CurrentUser()
+    currentUser:
+      JwtPayload,
+
+    @Req()
+    request:
+      Request,
+
+    @Res({
+      passthrough:
+        true,
+    })
+    response:
+      Response,
+  ) {
+    const result =
+      await this.authService.switchWorkspace(
+        currentUser.sub,
+        currentUser.sessionId,
+        organizationId,
+        request.get(
+          'user-agent',
+        ),
+      );
+
+    this.setRefreshTokenCookie(
+      response,
+      result.refreshToken,
+    );
+
+    return {
+      user:
+        result.user,
+
+      organization:
+        result.organization,
+
+      accessToken:
+        result.accessToken,
+    };
+  }
+
+  private setRefreshTokenCookie(
+    response:
+      Response,
+
+    refreshToken:
+      string,
+  ): void {
+    const isProduction =
+      process.env.NODE_ENV ===
+      'production';
+
+    response.cookie(
+      'refresh_token',
+      refreshToken,
+      {
+        httpOnly:
+          true,
+
+        secure:
+          isProduction,
+
+        sameSite:
+          isProduction
+            ? 'none'
+            : 'lax',
+
+        path:
+          '/api/v1/auth',
+
+        maxAge:
+          this.refreshTokenExpiresIn *
+          1000,
+      },
+    );
+  }
+
+  private clearRefreshTokenCookie(
+    response:
+      Response,
+  ): void {
+    const isProduction =
+      process.env.NODE_ENV ===
+      'production';
+
+    response.clearCookie(
+      'refresh_token',
+      {
+        httpOnly:
+          true,
+
+        secure:
+          isProduction,
+
+        sameSite:
+          isProduction
+            ? 'none'
+            : 'lax',
+
+        path:
+          '/api/v1/auth',
+      },
+    );
+  }
 }

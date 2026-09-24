@@ -62,6 +62,18 @@ interface FollowUpSidebarSummary {
   dueNext24HoursCount: number;
 }
 
+interface WorkspaceOption {
+  id: string;
+  name: string;
+  slug: string;
+  role: 'OWNER' | 'ADMIN' | 'MEMBER';
+  isCurrent: boolean;
+}
+
+interface WorkspacesResponse {
+  data: WorkspaceOption[];
+}
+
 
 /* =========================================================
    NAVIGATION
@@ -283,6 +295,155 @@ export function Sidebar({
     pathname,
     request,
   ]);
+
+
+  /* =======================================================
+     WORKSPACE SWITCHING
+  ======================================================= */
+
+  async function handleWorkspaceSwitch() {
+    try {
+      const response =
+        await request<WorkspacesResponse>(
+          '/auth/workspaces',
+        );
+
+      if (
+        response.data.length <=
+        1
+      ) {
+        await clientFlowSwal.fire({
+          title:
+            'Current workspace',
+
+          text:
+            organization?.name ??
+            'You only belong to one workspace.',
+
+          icon:
+            'info',
+
+          confirmButtonText:
+            'OK',
+        });
+
+        return;
+      }
+
+      const inputOptions =
+        Object.fromEntries(
+          response.data.map(
+            (
+              workspace,
+            ) => [
+              workspace.id,
+              `${workspace.name} · ${workspace.role
+                .toLowerCase()
+                .replace(
+                  /^./,
+                  (
+                    character,
+                  ) =>
+                    character.toUpperCase(),
+                )}`,
+            ],
+          ),
+        );
+
+      const result =
+        await clientFlowSwal.fire({
+          title:
+            'Switch workspace',
+
+          text:
+            'Choose the workspace you want to work in.',
+
+          input:
+            'select',
+
+          inputOptions,
+
+          inputValue:
+            organization?.id,
+
+          showCancelButton:
+            true,
+
+          confirmButtonText:
+            'Switch',
+
+          cancelButtonText:
+            'Cancel',
+
+          reverseButtons:
+            true,
+
+          inputValidator: (
+            value,
+          ) =>
+            value
+              ? null
+              : 'Choose a workspace.',
+        });
+
+      if (
+        !result.isConfirmed ||
+        !result.value ||
+        result.value ===
+          organization?.id
+      ) {
+        return;
+      }
+
+      await request(
+        `/auth/workspaces/${encodeURIComponent(result.value)}/switch`,
+        {
+          method:
+            'POST',
+        },
+      );
+
+      await clientFlowSwal.fire({
+        title:
+          'Workspace switched',
+
+        text:
+          'ClientFlow is reloading the selected workspace.',
+
+        icon:
+          'success',
+
+        showConfirmButton:
+          false,
+
+        timer:
+          900,
+      });
+
+      window.location.assign(
+        '/dashboard',
+      );
+    } catch (
+      switchError
+    ) {
+      await clientFlowSwal.fire({
+        title:
+          'Could not switch workspace',
+
+        text:
+          switchError instanceof
+            Error
+            ? switchError.message
+            : 'Please try again.',
+
+        icon:
+          'error',
+
+        confirmButtonText:
+          'OK',
+      });
+    }
+  }
 
 
   /* =======================================================
@@ -757,6 +918,9 @@ export function Sidebar({
                 aria-label={
                   organization?.name ??
                   'Workspace'
+                }
+                onClick={() =>
+                  void handleWorkspaceSwitch()
                 }
                 className={`
                   group

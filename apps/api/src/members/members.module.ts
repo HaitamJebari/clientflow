@@ -11,6 +11,10 @@ import {
 } from '../auth/auth.module';
 
 import {
+  EmailModule,
+} from '../email/email.module';
+
+import {
   PrismaModule,
 } from '../prisma/prisma.module';
 
@@ -25,6 +29,7 @@ import {
 @Module({
   imports: [
     AuthModule,
+    EmailModule,
     PrismaModule,
 
     PassportModule.register({

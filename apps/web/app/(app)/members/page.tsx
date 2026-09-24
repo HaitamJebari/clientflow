@@ -91,13 +91,11 @@ interface CreateInvitationResponse {
   invitation:
     InvitationRecord;
 
-  delivery: {
-    status:
-      'NOT_CONFIGURED';
+  emailSent:
+    true;
 
-    message:
-      string;
-  };
+  emailMessageId:
+    string;
 }
 
 function displayName(
@@ -482,9 +480,26 @@ export default function MembersPage() {
         false,
       );
 
+      const successMessage =
+        `Invitation email sent to ${response.invitation.email}.`;
+
       setSuccess(
-        response.delivery.message,
+        successMessage,
       );
+
+      await clientFlowSwal.fire({
+        title:
+          'Invitation sent',
+
+        text:
+          successMessage,
+
+        icon:
+          'success',
+
+        confirmButtonText:
+          'OK',
+      });
     } catch (
       inviteError
     ) {
@@ -1435,8 +1450,8 @@ export default function MembersPage() {
                 text-[var(--cf-text-muted)]
               "
             >
-              Invitations expire after 7 days. Email delivery and
-              acceptance are connected in the next collaboration step.
+              Invitation emails contain a secure acceptance link and
+              expire after 7 days.
             </p>
           </div>
 
@@ -1681,8 +1696,8 @@ export default function MembersPage() {
                     text-[var(--cf-text-secondary)]
                   "
                 >
-                  Create a secure pending invitation. Email delivery
-                  and acceptance will be connected in the next step.
+                  ClientFlow will send a real invitation email with a
+                  secure acceptance link that expires after 7 days.
                 </p>
               </div>
 

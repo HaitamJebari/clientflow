@@ -1,55 +1,98 @@
 import {
   ConflictException,
+  ForbiddenException,
+  GoneException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
+
+import {
+  ConfigService,
+} from '@nestjs/config';
+
+import {
+  JwtService,
+} from '@nestjs/jwt';
 
 import * as argon2 from 'argon2';
 
 import {
+  createHash,
   randomBytes,
   randomUUID,
 } from 'crypto';
 
-import { PrismaService } from '../prisma/prisma.service';
+import {
+  PrismaService,
+} from '../prisma/prisma.service';
 
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
+import {
+  AcceptInvitationLoginDto,
+} from './dto/accept-invitation-login.dto';
 
-import { JwtPayload } from './types/jwt-payload.type';
+import {
+  AcceptInvitationRegisterDto,
+} from './dto/accept-invitation-register.dto';
+
+import {
+  LoginDto,
+} from './dto/login.dto';
+
+import {
+  RegisterDto,
+} from './dto/register.dto';
+
+import {
+  JwtPayload,
+} from './types/jwt-payload.type';
 
 @Injectable()
 export class AuthService {
-  private readonly accessTokenExpiresIn: number;
-  private readonly refreshTokenExpiresIn: number;
+  private readonly accessTokenExpiresIn:
+    number;
+
+  private readonly refreshTokenExpiresIn:
+    number;
 
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
-  ) {
-    this.accessTokenExpiresIn = Number(
-      this.configService.get(
-        'JWT_ACCESS_EXPIRES_SECONDS',
-        '900',
-      ),
-    );
+    private readonly prisma:
+      PrismaService,
 
-    this.refreshTokenExpiresIn = Number(
-      this.configService.get(
-        'JWT_REFRESH_EXPIRES_SECONDS',
-        '604800',
-      ),
-    );
+    private readonly jwtService:
+      JwtService,
+
+    private readonly configService:
+      ConfigService,
+  ) {
+    this.accessTokenExpiresIn =
+      Number(
+        this.configService.get(
+          'JWT_ACCESS_EXPIRES_SECONDS',
+          '900',
+        ),
+      );
+
+    this.refreshTokenExpiresIn =
+      Number(
+        this.configService.get(
+          'JWT_REFRESH_EXPIRES_SECONDS',
+          '604800',
+        ),
+      );
   }
 
   async register(
-    dto: RegisterDto,
-    userAgent?: string,
+    dto:
+      RegisterDto,
+
+    userAgent?:
+      string,
   ) {
-    const email = dto.email.trim().toLowerCase();
+    const email =
+      dto.email
+        .trim()
+        .toLowerCase();
 
     const existingUser =
       await this.prisma.user.findUnique({
@@ -58,57 +101,80 @@ export class AuthService {
         },
       });
 
-    if (existingUser) {
+    if (
+      existingUser
+    ) {
       throw new ConflictException(
         'An account with this email already exists.',
       );
     }
 
-    const passwordHash = await argon2.hash(
-      dto.password,
-      {
-        type: argon2.argon2id,
-      },
-    );
+    const passwordHash =
+      await argon2.hash(
+        dto.password,
+        {
+          type:
+            argon2.argon2id,
+        },
+      );
 
-    const userId = randomUUID();
-    const organizationId = randomUUID();
-    const sessionId = randomUUID();
+    const userId =
+      randomUUID();
+
+    const organizationId =
+      randomUUID();
+
+    const sessionId =
+      randomUUID();
 
     const organizationSlug =
       this.generateOrganizationSlug(
         dto.businessName,
       );
 
-    const tokens = await this.generateTokens({
-      userId,
-      organizationId,
-      sessionId,
-    });
+    const tokens =
+      await this.generateTokens({
+        userId,
+        organizationId,
+        sessionId,
+      });
 
     const refreshTokenHash =
-      await argon2.hash(tokens.refreshToken, {
-        type: argon2.argon2id,
-      });
+      await argon2.hash(
+        tokens.refreshToken,
+        {
+          type:
+            argon2.argon2id,
+        },
+      );
 
     const sessionExpiresAt =
       this.getRefreshTokenExpirationDate();
 
     const result =
       await this.prisma.$transaction(
-        async (transaction) => {
+        async (
+          transaction,
+        ) => {
           const user =
             await transaction.user.create({
               data: {
-                id: userId,
+                id:
+                  userId,
+
                 email,
+
                 passwordHash,
 
                 firstName:
-                  dto.firstName?.trim() || null,
+                  dto.firstName
+                    ?.trim() ||
+                  null,
 
                 lastName:
-                  dto.lastName?.trim() || null,
+                  dto.lastName
+                    ?.trim() ||
+                  null,
               },
 
               select: {
@@ -122,36 +188,40 @@ export class AuthService {
             });
 
           const organization =
-            await transaction.organization.create(
-              {
-                data: {
-                  id: organizationId,
-                  name: dto.businessName.trim(),
-                  slug: organizationSlug,
-                },
-
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
-                  createdAt: true,
-                },
-              },
-            );
-
-          await transaction.organizationMember.create(
-            {
+            await transaction.organization.create({
               data: {
-                userId,
-                organizationId,
-                role: 'OWNER',
+                id:
+                  organizationId,
+
+                name:
+                  dto.businessName.trim(),
+
+                slug:
+                  organizationSlug,
               },
+
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                createdAt: true,
+              },
+            });
+
+          await transaction.organizationMember.create({
+            data: {
+              userId,
+              organizationId,
+
+              role:
+                'OWNER',
             },
-          );
+          });
 
           await transaction.session.create({
             data: {
-              id: sessionId,
+              id:
+                sessionId,
 
               userId,
               organizationId,
@@ -162,7 +232,8 @@ export class AuthService {
                 sessionExpiresAt,
 
               userAgent:
-                userAgent || null,
+                userAgent ||
+                null,
             },
           });
 
@@ -185,10 +256,16 @@ export class AuthService {
   }
 
   async login(
-    dto: LoginDto,
-    userAgent?: string,
+    dto:
+      LoginDto,
+
+    userAgent?:
+      string,
   ) {
-    const email = dto.email.trim().toLowerCase();
+    const email =
+      dto.email
+        .trim()
+        .toLowerCase();
 
     const user =
       await this.prisma.user.findUnique({
@@ -199,19 +276,24 @@ export class AuthService {
         include: {
           memberships: {
             include: {
-              organization: true,
+              organization:
+                true,
             },
 
             orderBy: {
-              createdAt: 'asc',
+              createdAt:
+                'asc',
             },
 
-            take: 1,
+            take:
+              1,
           },
         },
       });
 
-    if (!user) {
+    if (
+      !user
+    ) {
       throw new UnauthorizedException(
         'Invalid email or password.',
       );
@@ -223,7 +305,9 @@ export class AuthService {
         dto.password,
       );
 
-    if (!passwordMatches) {
+    if (
+      !passwordMatches
+    ) {
       throw new UnauthorizedException(
         'Invalid email or password.',
       );
@@ -232,36 +316,44 @@ export class AuthService {
     const membership =
       user.memberships[0];
 
-    if (!membership) {
+    if (
+      !membership
+    ) {
       throw new UnauthorizedException(
         'No organization is associated with this account.',
       );
     }
 
-    const sessionId = randomUUID();
+    const sessionId =
+      randomUUID();
 
-    const tokens = await this.generateTokens({
-      userId: user.id,
+    const tokens =
+      await this.generateTokens({
+        userId:
+          user.id,
 
-      organizationId:
-        membership.organizationId,
+        organizationId:
+          membership.organizationId,
 
-      sessionId,
-    });
+        sessionId,
+      });
 
     const refreshTokenHash =
       await argon2.hash(
         tokens.refreshToken,
         {
-          type: argon2.argon2id,
+          type:
+            argon2.argon2id,
         },
       );
 
     await this.prisma.session.create({
       data: {
-        id: sessionId,
+        id:
+          sessionId,
 
-        userId: user.id,
+        userId:
+          user.id,
 
         organizationId:
           membership.organizationId,
@@ -272,25 +364,41 @@ export class AuthService {
           this.getRefreshTokenExpirationDate(),
 
         userAgent:
-          userAgent || null,
+          userAgent ||
+          null,
       },
     });
 
     return {
       user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        id:
+          user.id,
+
+        email:
+          user.email,
+
+        firstName:
+          user.firstName,
+
+        lastName:
+          user.lastName,
+
         emailVerified:
           user.emailVerified,
       },
 
       organization: {
-        id: membership.organization.id,
-        name: membership.organization.name,
-        slug: membership.organization.slug,
-        role: membership.role,
+        id:
+          membership.organization.id,
+
+        name:
+          membership.organization.name,
+
+        slug:
+          membership.organization.slug,
+
+        role:
+          membership.role,
       },
 
       accessToken:
@@ -302,9 +410,11 @@ export class AuthService {
   }
 
   async refresh(
-    refreshToken: string,
+    refreshToken:
+      string,
   ) {
-    let payload: JwtPayload;
+    let payload:
+      JwtPayload;
 
     try {
       payload =
@@ -323,7 +433,10 @@ export class AuthService {
       );
     }
 
-    if (payload.type !== 'refresh') {
+    if (
+      payload.type !==
+      'refresh'
+    ) {
       throw new UnauthorizedException(
         'Invalid refresh token.',
       );
@@ -332,14 +445,16 @@ export class AuthService {
     const session =
       await this.prisma.session.findUnique({
         where: {
-          id: payload.sessionId,
+          id:
+            payload.sessionId,
         },
       });
 
     if (
       !session ||
       session.revokedAt ||
-      session.expiresAt <= new Date()
+      session.expiresAt <=
+        new Date()
     ) {
       throw new UnauthorizedException(
         'Session has expired.',
@@ -347,7 +462,8 @@ export class AuthService {
     }
 
     if (
-      session.userId !== payload.sub ||
+      session.userId !==
+        payload.sub ||
       session.organizationId !==
         payload.organizationId
     ) {
@@ -362,21 +478,18 @@ export class AuthService {
         refreshToken,
       );
 
-    if (!tokenMatches) {
-      /*
-       * Someone attempted to use a refresh
-       * token that does not match the latest
-       * token stored for this session.
-       *
-       * Revoke the session.
-       */
+    if (
+      !tokenMatches
+    ) {
       await this.prisma.session.update({
         where: {
-          id: session.id,
+          id:
+            session.id,
         },
 
         data: {
-          revokedAt: new Date(),
+          revokedAt:
+            new Date(),
         },
       });
 
@@ -385,24 +498,31 @@ export class AuthService {
       );
     }
 
-    const tokens = await this.generateTokens({
-      userId: session.userId,
-      organizationId:
-        session.organizationId,
-      sessionId: session.id,
-    });
+    const tokens =
+      await this.generateTokens({
+        userId:
+          session.userId,
+
+        organizationId:
+          session.organizationId,
+
+        sessionId:
+          session.id,
+      });
 
     const refreshTokenHash =
       await argon2.hash(
         tokens.refreshToken,
         {
-          type: argon2.argon2id,
+          type:
+            argon2.argon2id,
         },
       );
 
     await this.prisma.session.update({
       where: {
-        id: session.id,
+        id:
+          session.id,
       },
 
       data: {
@@ -423,75 +543,1124 @@ export class AuthService {
   }
 
   async logout(
-    sessionId: string,
+    sessionId:
+      string,
   ): Promise<void> {
     await this.prisma.session.updateMany({
       where: {
-        id: sessionId,
+        id:
+          sessionId,
 
-        revokedAt: null,
+        revokedAt:
+          null,
       },
 
       data: {
-        revokedAt: new Date(),
+        revokedAt:
+          new Date(),
       },
     });
   }
 
   async getMe(
-    userId: string,
-    organizationId: string,
+    userId:
+      string,
+
+    organizationId:
+      string,
   ) {
     const membership =
-      await this.prisma.organizationMember.findFirst(
-        {
-          where: {
-            userId,
-            organizationId,
+      await this.prisma.organizationMember.findFirst({
+        where: {
+          userId,
+          organizationId,
+        },
+
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              avatarUrl: true,
+              emailVerified: true,
+              createdAt: true,
+            },
           },
 
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                avatarUrl: true,
-                emailVerified: true,
-                createdAt: true,
-              },
-            },
-
-            organization: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-                website: true,
-                industry: true,
-                createdAt: true,
-              },
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              website: true,
+              industry: true,
+              createdAt: true,
             },
           },
         },
-      );
+      });
 
-    if (!membership) {
+    if (
+      !membership
+    ) {
       throw new UnauthorizedException(
         'Organization membership not found.',
       );
     }
 
     return {
-      user: membership.user,
+      user:
+        membership.user,
 
       organization: {
         ...membership.organization,
 
-        role: membership.role,
+        role:
+          membership.role,
       },
     };
+  }
+
+  async getInvitationPreview(
+    token:
+      string,
+  ) {
+    const invitation =
+      await this.getActiveInvitation(
+        token,
+      );
+
+    const existingUser =
+      await this.prisma.user.findUnique({
+        where: {
+          email:
+            invitation.email,
+        },
+
+        select: {
+          id:
+            true,
+        },
+      });
+
+    return {
+      email:
+        invitation.email,
+
+      role:
+        invitation.role,
+
+      expiresAt:
+        invitation.expiresAt,
+
+      accountExists:
+        Boolean(
+          existingUser,
+        ),
+
+      organization: {
+        id:
+          invitation.organization.id,
+
+        name:
+          invitation.organization.name,
+
+        slug:
+          invitation.organization.slug,
+      },
+
+      invitedBy:
+        invitation.invitedBy
+          ? {
+              firstName:
+                invitation.invitedBy.firstName,
+
+              lastName:
+                invitation.invitedBy.lastName,
+
+              email:
+                invitation.invitedBy.email,
+            }
+          : null,
+    };
+  }
+
+  async registerWithInvitation(
+    token:
+      string,
+
+    dto:
+      AcceptInvitationRegisterDto,
+
+    userAgent?:
+      string,
+  ) {
+    const invitation =
+      await this.getActiveInvitation(
+        token,
+      );
+
+    const existingUser =
+      await this.prisma.user.findUnique({
+        where: {
+          email:
+            invitation.email,
+        },
+
+        select: {
+          id:
+            true,
+        },
+      });
+
+    if (
+      existingUser
+    ) {
+      throw new ConflictException(
+        'An account already exists for this invitation. Sign in instead.',
+      );
+    }
+
+    const passwordHash =
+      await argon2.hash(
+        dto.password,
+        {
+          type:
+            argon2.argon2id,
+        },
+      );
+
+    const userId =
+      randomUUID();
+
+    const sessionId =
+      randomUUID();
+
+    const tokens =
+      await this.generateTokens({
+        userId,
+
+        organizationId:
+          invitation.organizationId,
+
+        sessionId,
+      });
+
+    const refreshTokenHash =
+      await argon2.hash(
+        tokens.refreshToken,
+        {
+          type:
+            argon2.argon2id,
+        },
+      );
+
+    const now =
+      new Date();
+
+    const result =
+      await this.prisma.$transaction(
+        async (
+          transaction,
+        ) => {
+          const claimed =
+            await transaction.organizationInvitation.updateMany({
+              where: {
+                id:
+                  invitation.id,
+
+                acceptedAt:
+                  null,
+
+                revokedAt:
+                  null,
+
+                expiresAt: {
+                  gt:
+                    now,
+                },
+              },
+
+              data: {
+                acceptedAt:
+                  now,
+              },
+            });
+
+          if (
+            claimed.count !==
+            1
+          ) {
+            throw new GoneException(
+              'This invitation is no longer available.',
+            );
+          }
+
+          const user =
+            await transaction.user.create({
+              data: {
+                id:
+                  userId,
+
+                email:
+                  invitation.email,
+
+                passwordHash,
+
+                firstName:
+                  dto.firstName.trim(),
+
+                lastName:
+                  dto.lastName
+                    ?.trim() ||
+                  null,
+
+                emailVerified:
+                  true,
+              },
+
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                emailVerified: true,
+                createdAt: true,
+              },
+            });
+
+          const membership =
+            await transaction.organizationMember.create({
+              data: {
+                organizationId:
+                  invitation.organizationId,
+
+                userId,
+
+                role:
+                  invitation.role,
+              },
+
+              select: {
+                role:
+                  true,
+              },
+            });
+
+          await transaction.session.create({
+            data: {
+              id:
+                sessionId,
+
+              userId,
+
+              organizationId:
+                invitation.organizationId,
+
+              refreshTokenHash,
+
+              expiresAt:
+                this.getRefreshTokenExpirationDate(),
+
+              userAgent:
+                userAgent ||
+                null,
+            },
+          });
+
+          return {
+            user,
+            role:
+              membership.role,
+          };
+        },
+      );
+
+    return {
+      user:
+        result.user,
+
+      organization: {
+        id:
+          invitation.organization.id,
+
+        name:
+          invitation.organization.name,
+
+        slug:
+          invitation.organization.slug,
+
+        website:
+          invitation.organization.website,
+
+        industry:
+          invitation.organization.industry,
+
+        role:
+          result.role,
+      },
+
+      accessToken:
+        tokens.accessToken,
+
+      refreshToken:
+        tokens.refreshToken,
+    };
+  }
+
+  async loginWithInvitation(
+    token:
+      string,
+
+    dto:
+      AcceptInvitationLoginDto,
+
+    userAgent?:
+      string,
+  ) {
+    const invitation =
+      await this.getActiveInvitation(
+        token,
+      );
+
+    const email =
+      dto.email
+        .trim()
+        .toLowerCase();
+
+    if (
+      email !==
+      invitation.email
+    ) {
+      throw new ForbiddenException(
+        'This invitation was issued to a different email address.',
+      );
+    }
+
+    const user =
+      await this.prisma.user.findUnique({
+        where: {
+          email,
+        },
+
+        select: {
+          id: true,
+          email: true,
+          passwordHash: true,
+          firstName: true,
+          lastName: true,
+          emailVerified: true,
+          createdAt: true,
+        },
+      });
+
+    if (
+      !user
+    ) {
+      throw new UnauthorizedException(
+        'No account exists for this invitation. Create your account instead.',
+      );
+    }
+
+    const passwordMatches =
+      await argon2.verify(
+        user.passwordHash,
+        dto.password,
+      );
+
+    if (
+      !passwordMatches
+    ) {
+      throw new UnauthorizedException(
+        'Invalid email or password.',
+      );
+    }
+
+    const sessionId =
+      randomUUID();
+
+    const tokens =
+      await this.generateTokens({
+        userId:
+          user.id,
+
+        organizationId:
+          invitation.organizationId,
+
+        sessionId,
+      });
+
+    const refreshTokenHash =
+      await argon2.hash(
+        tokens.refreshToken,
+        {
+          type:
+            argon2.argon2id,
+        },
+      );
+
+    const now =
+      new Date();
+
+    const role =
+      await this.prisma.$transaction(
+        async (
+          transaction,
+        ) => {
+          const claimed =
+            await transaction.organizationInvitation.updateMany({
+              where: {
+                id:
+                  invitation.id,
+
+                acceptedAt:
+                  null,
+
+                revokedAt:
+                  null,
+
+                expiresAt: {
+                  gt:
+                    now,
+                },
+              },
+
+              data: {
+                acceptedAt:
+                  now,
+              },
+            });
+
+          if (
+            claimed.count !==
+            1
+          ) {
+            throw new GoneException(
+              'This invitation is no longer available.',
+            );
+          }
+
+          const membership =
+            await transaction.organizationMember.upsert({
+              where: {
+                organizationId_userId: {
+                  organizationId:
+                    invitation.organizationId,
+
+                  userId:
+                    user.id,
+                },
+              },
+
+              create: {
+                organizationId:
+                  invitation.organizationId,
+
+                userId:
+                  user.id,
+
+                role:
+                  invitation.role,
+              },
+
+              update: {},
+
+              select: {
+                role:
+                  true,
+              },
+            });
+
+          await transaction.session.create({
+            data: {
+              id:
+                sessionId,
+
+              userId:
+                user.id,
+
+              organizationId:
+                invitation.organizationId,
+
+              refreshTokenHash,
+
+              expiresAt:
+                this.getRefreshTokenExpirationDate(),
+
+              userAgent:
+                userAgent ||
+                null,
+            },
+          });
+
+          return membership.role;
+        },
+      );
+
+    return {
+      user: {
+        id:
+          user.id,
+
+        email:
+          user.email,
+
+        firstName:
+          user.firstName,
+
+        lastName:
+          user.lastName,
+
+        emailVerified:
+          user.emailVerified,
+
+        createdAt:
+          user.createdAt,
+      },
+
+      organization: {
+        id:
+          invitation.organization.id,
+
+        name:
+          invitation.organization.name,
+
+        slug:
+          invitation.organization.slug,
+
+        website:
+          invitation.organization.website,
+
+        industry:
+          invitation.organization.industry,
+
+        role,
+      },
+
+      accessToken:
+        tokens.accessToken,
+
+      refreshToken:
+        tokens.refreshToken,
+    };
+  }
+
+  async acceptInvitation(
+    token:
+      string,
+
+    currentUserId:
+      string,
+
+    currentSessionId:
+      string,
+
+    userAgent?:
+      string,
+  ) {
+    const invitation =
+      await this.getActiveInvitation(
+        token,
+      );
+
+    const user =
+      await this.prisma.user.findUnique({
+        where: {
+          id:
+            currentUserId,
+        },
+
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          emailVerified: true,
+          createdAt: true,
+        },
+      });
+
+    if (
+      !user
+    ) {
+      throw new UnauthorizedException(
+        'User account not found.',
+      );
+    }
+
+    if (
+      user.email
+        .trim()
+        .toLowerCase() !==
+      invitation.email
+    ) {
+      throw new ForbiddenException(
+        'Sign in with the email address that received this invitation.',
+      );
+    }
+
+    const sessionId =
+      randomUUID();
+
+    const tokens =
+      await this.generateTokens({
+        userId:
+          user.id,
+
+        organizationId:
+          invitation.organizationId,
+
+        sessionId,
+      });
+
+    const refreshTokenHash =
+      await argon2.hash(
+        tokens.refreshToken,
+        {
+          type:
+            argon2.argon2id,
+        },
+      );
+
+    const now =
+      new Date();
+
+    const role =
+      await this.prisma.$transaction(
+        async (
+          transaction,
+        ) => {
+          const claimed =
+            await transaction.organizationInvitation.updateMany({
+              where: {
+                id:
+                  invitation.id,
+
+                acceptedAt:
+                  null,
+
+                revokedAt:
+                  null,
+
+                expiresAt: {
+                  gt:
+                    now,
+                },
+              },
+
+              data: {
+                acceptedAt:
+                  now,
+              },
+            });
+
+          if (
+            claimed.count !==
+            1
+          ) {
+            throw new GoneException(
+              'This invitation is no longer available.',
+            );
+          }
+
+          const membership =
+            await transaction.organizationMember.upsert({
+              where: {
+                organizationId_userId: {
+                  organizationId:
+                    invitation.organizationId,
+
+                  userId:
+                    user.id,
+                },
+              },
+
+              create: {
+                organizationId:
+                  invitation.organizationId,
+
+                userId:
+                  user.id,
+
+                role:
+                  invitation.role,
+              },
+
+              update: {},
+
+              select: {
+                role:
+                  true,
+              },
+            });
+
+          await transaction.session.updateMany({
+            where: {
+              id:
+                currentSessionId,
+
+              userId:
+                currentUserId,
+
+              revokedAt:
+                null,
+            },
+
+            data: {
+              revokedAt:
+                now,
+            },
+          });
+
+          await transaction.session.create({
+            data: {
+              id:
+                sessionId,
+
+              userId:
+                user.id,
+
+              organizationId:
+                invitation.organizationId,
+
+              refreshTokenHash,
+
+              expiresAt:
+                this.getRefreshTokenExpirationDate(),
+
+              userAgent:
+                userAgent ||
+                null,
+            },
+          });
+
+          return membership.role;
+        },
+      );
+
+    return {
+      user,
+
+      organization: {
+        id:
+          invitation.organization.id,
+
+        name:
+          invitation.organization.name,
+
+        slug:
+          invitation.organization.slug,
+
+        website:
+          invitation.organization.website,
+
+        industry:
+          invitation.organization.industry,
+
+        role,
+      },
+
+      accessToken:
+        tokens.accessToken,
+
+      refreshToken:
+        tokens.refreshToken,
+    };
+  }
+
+  async listWorkspaces(
+    userId:
+      string,
+
+    currentOrganizationId:
+      string,
+  ) {
+    const memberships =
+      await this.prisma.organizationMember.findMany({
+        where: {
+          userId,
+        },
+
+        select: {
+          id: true,
+          role: true,
+          createdAt: true,
+
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              website: true,
+              industry: true,
+            },
+          },
+        },
+
+        orderBy: {
+          createdAt:
+            'asc',
+        },
+      });
+
+    return {
+      data:
+        memberships.map(
+          (
+            membership,
+          ) => ({
+            id:
+              membership.organization.id,
+
+            name:
+              membership.organization.name,
+
+            slug:
+              membership.organization.slug,
+
+            website:
+              membership.organization.website,
+
+            industry:
+              membership.organization.industry,
+
+            role:
+              membership.role,
+
+            joinedAt:
+              membership.createdAt,
+
+            isCurrent:
+              membership.organization.id ===
+              currentOrganizationId,
+          }),
+        ),
+    };
+  }
+
+  async switchWorkspace(
+    userId:
+      string,
+
+    currentSessionId:
+      string,
+
+    organizationId:
+      string,
+
+    userAgent?:
+      string,
+  ) {
+    const membership =
+      await this.prisma.organizationMember.findFirst({
+        where: {
+          userId,
+          organizationId,
+        },
+
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              emailVerified: true,
+              createdAt: true,
+            },
+          },
+
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              website: true,
+              industry: true,
+              createdAt: true,
+            },
+          },
+        },
+      });
+
+    if (
+      !membership
+    ) {
+      throw new NotFoundException(
+        'Workspace membership not found.',
+      );
+    }
+
+    const sessionId =
+      randomUUID();
+
+    const tokens =
+      await this.generateTokens({
+        userId,
+
+        organizationId,
+
+        sessionId,
+      });
+
+    const refreshTokenHash =
+      await argon2.hash(
+        tokens.refreshToken,
+        {
+          type:
+            argon2.argon2id,
+        },
+      );
+
+    const now =
+      new Date();
+
+    await this.prisma.$transaction([
+      this.prisma.session.updateMany({
+        where: {
+          id:
+            currentSessionId,
+
+          userId,
+
+          revokedAt:
+            null,
+        },
+
+        data: {
+          revokedAt:
+            now,
+        },
+      }),
+
+      this.prisma.session.create({
+        data: {
+          id:
+            sessionId,
+
+          userId,
+
+          organizationId,
+
+          refreshTokenHash,
+
+          expiresAt:
+            this.getRefreshTokenExpirationDate(),
+
+          userAgent:
+            userAgent ||
+            null,
+        },
+      }),
+    ]);
+
+    return {
+      user:
+        membership.user,
+
+      organization: {
+        ...membership.organization,
+
+        role:
+          membership.role,
+      },
+
+      accessToken:
+        tokens.accessToken,
+
+      refreshToken:
+        tokens.refreshToken,
+    };
+  }
+
+  private async getActiveInvitation(
+    token:
+      string,
+  ) {
+    if (
+      !token ||
+      token.length >
+        512
+    ) {
+      throw new NotFoundException(
+        'Invitation not found.',
+      );
+    }
+
+    const tokenHash =
+      createHash(
+        'sha256',
+      )
+        .update(
+          token,
+        )
+        .digest(
+          'hex',
+        );
+
+    const invitation =
+      await this.prisma.organizationInvitation.findUnique({
+        where: {
+          tokenHash,
+        },
+
+        include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              website: true,
+              industry: true,
+            },
+          },
+
+          invitedBy: {
+            select: {
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+    if (
+      !invitation
+    ) {
+      throw new NotFoundException(
+        'Invitation not found.',
+      );
+    }
+
+    if (
+      invitation.revokedAt
+    ) {
+      throw new GoneException(
+        'This invitation was cancelled.',
+      );
+    }
+
+    if (
+      invitation.acceptedAt
+    ) {
+      throw new GoneException(
+        'This invitation has already been accepted.',
+      );
+    }
+
+    if (
+      invitation.expiresAt <=
+      new Date()
+    ) {
+      throw new GoneException(
+        'This invitation has expired.',
+      );
+    }
+
+    return invitation;
   }
 
   private async generateTokens({
@@ -499,23 +1668,40 @@ export class AuthService {
     organizationId,
     sessionId,
   }: {
-    userId: string;
-    organizationId: string;
-    sessionId: string;
-  }) {
-    const accessPayload: JwtPayload = {
-      sub: userId,
-      organizationId,
-      sessionId,
-      type: 'access',
-    };
+    userId:
+      string;
 
-    const refreshPayload: JwtPayload = {
-      sub: userId,
-      organizationId,
-      sessionId,
-      type: 'refresh',
-    };
+    organizationId:
+      string;
+
+    sessionId:
+      string;
+  }) {
+    const accessPayload:
+      JwtPayload = {
+        sub:
+          userId,
+
+        organizationId,
+
+        sessionId,
+
+        type:
+          'access',
+      };
+
+    const refreshPayload:
+      JwtPayload = {
+        sub:
+          userId,
+
+        organizationId,
+
+        sessionId,
+
+        type:
+          'refresh',
+      };
 
     const accessSecret =
       this.configService.getOrThrow<string>(
@@ -530,27 +1716,30 @@ export class AuthService {
     const [
       accessToken,
       refreshToken,
-    ] = await Promise.all([
-      this.jwtService.signAsync(
-        accessPayload,
-        {
-          secret: accessSecret,
+    ] =
+      await Promise.all([
+        this.jwtService.signAsync(
+          accessPayload,
+          {
+            secret:
+              accessSecret,
 
-          expiresIn:
-            this.accessTokenExpiresIn,
-        },
-      ),
+            expiresIn:
+              this.accessTokenExpiresIn,
+          },
+        ),
 
-      this.jwtService.signAsync(
-        refreshPayload,
-        {
-          secret: refreshSecret,
+        this.jwtService.signAsync(
+          refreshPayload,
+          {
+            secret:
+              refreshSecret,
 
-          expiresIn:
-            this.refreshTokenExpiresIn,
-        },
-      ),
-    ]);
+            expiresIn:
+              this.refreshTokenExpiresIn,
+          },
+        ),
+      ]);
 
     return {
       accessToken,
@@ -558,7 +1747,8 @@ export class AuthService {
     };
   }
 
-  private getRefreshTokenExpirationDate(): Date {
+  private getRefreshTokenExpirationDate():
+    Date {
     return new Date(
       Date.now() +
         this.refreshTokenExpiresIn *
@@ -567,25 +1757,39 @@ export class AuthService {
   }
 
   private generateOrganizationSlug(
-    businessName: string,
+    businessName:
+      string,
   ): string {
     const normalized =
       businessName
         .trim()
         .toLowerCase()
-        .normalize('NFD')
+        .normalize(
+          'NFD',
+        )
         .replace(
           /[\u0300-\u036f]/g,
           '',
         )
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '');
+        .replace(
+          /[^a-z0-9]+/g,
+          '-',
+        )
+        .replace(
+          /^-+|-+$/g,
+          '',
+        );
 
     const safeBase =
-      normalized || 'workspace';
+      normalized ||
+      'workspace';
 
     const suffix =
-      randomBytes(3).toString('hex');
+      randomBytes(
+        3,
+      ).toString(
+        'hex',
+      );
 
     return `${safeBase}-${suffix}`;
   }
